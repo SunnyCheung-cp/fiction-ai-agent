@@ -78,20 +78,25 @@ def create_character(novel_id: str, body: CharacterCreate, db: DB):
     if not db.get_novel(novel_id):
         raise HTTPException(status_code=404, detail="Novel not found")
     char_id = db.create_character(novel_id, body.name, body.profile)
-    return next(c for c in db.get_characters(novel_id) if c["id"] == char_id)
+    char = next((c for c in db.get_characters(novel_id) if c["id"] == char_id), None)
+    if not char:
+        raise HTTPException(status_code=500, detail="Character creation failed")
+    return char
 
 @app.get("/api/novels/{novel_id}/characters", response_model=list[CharacterResponse])
 def list_characters(novel_id: str, db: DB):
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
     return db.get_characters(novel_id)
 
 @app.put("/api/novels/{novel_id}/characters/{char_id}", response_model=CharacterResponse)
 def update_character(novel_id: str, char_id: str, body: CharacterUpdate, db: DB):
-    db.update_character(char_id, body.profile)
     chars = db.get_characters(novel_id)
     char = next((c for c in chars if c["id"] == char_id), None)
     if not char:
         raise HTTPException(status_code=404, detail="Character not found")
-    return char
+    db.update_character(char_id, body.profile)
+    return {**char, "profile": body.profile}
 
 # --- Outlines ---
 
@@ -101,10 +106,15 @@ def upsert_outline(novel_id: str, body: OutlineUpsert, db: DB):
         raise HTTPException(status_code=404, detail="Novel not found")
     db.upsert_outline(novel_id, body.chapter_num, body.outline)
     outlines = db.get_outlines(novel_id)
-    return next(o for o in outlines if o["chapter_num"] == body.chapter_num)
+    outline = next((o for o in outlines if o["chapter_num"] == body.chapter_num), None)
+    if not outline:
+        raise HTTPException(status_code=500, detail="Outline upsert failed")
+    return outline
 
 @app.get("/api/novels/{novel_id}/outlines", response_model=list[OutlineResponse])
 def list_outlines(novel_id: str, db: DB):
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
     return db.get_outlines(novel_id)
 
 # --- Chapters ---
@@ -136,7 +146,7 @@ async def generate_chapter(novel_id: str, chapter_num: int, db: DB):
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             return
 
-        db.save_chapter_content(novel_id, chapter_num, full_text)
+        await asyncio.to_thread(db.save_chapter_content, novel_id, chapter_num, full_text)
         asyncio.create_task(
             mm.after_chapter_written(chapter_num=chapter_num, content=full_text, db=db)
         )
