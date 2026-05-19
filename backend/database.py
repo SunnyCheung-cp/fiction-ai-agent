@@ -148,9 +148,9 @@ class Database:
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO chapters (novel_id, chapter_num, summary)
-                   VALUES (?, ?, '')
+                   VALUES (?, ?, ?)
                    ON CONFLICT(novel_id, chapter_num) DO UPDATE SET summary = ?""",
-                (novel_id, chapter_num, summary)
+                (novel_id, chapter_num, summary, summary)
             )
 
     def get_chapter(self, novel_id: str, chapter_num: int) -> Optional[dict]:
