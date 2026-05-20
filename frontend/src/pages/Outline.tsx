@@ -52,7 +52,7 @@ export default function OutlinePage() {
                   className="w-full text-sm px-1 py-1 resize-none"
                   rows={2}
                   defaultValue={o.outline}
-                  onBlur={e => handleUpsert(o.chapter_num, e.target.value)}
+                  onBlur={e => handleUpsert(o.chapter_num, e.target.value).catch(console.error)}
                 />
               </td>
             </tr>
@@ -81,7 +81,7 @@ export default function OutlinePage() {
         />
         <button
           className="bg-green-600 text-white px-3 py-1 rounded text-sm"
-          onClick={handleAddNew}
+          onClick={() => handleAddNew().catch(console.error)}
         >
           添加
         </button>
