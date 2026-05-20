@@ -35,20 +35,25 @@ export default function Writer() {
     setContent('')
     setStatus('生成中...')
 
-    await api.chapters.generateStream(
-      novelId,
-      chapterNum,
-      chunk => setContent(prev => prev + chunk),
-      () => {
-        setIsGenerating(false)
-        setStatus('生成完成，正在更新记忆...')
-        setTimeout(() => setStatus(''), 3000)
-      },
-      err => {
-        setIsGenerating(false)
-        setStatus(`错误: ${err}`)
-      }
-    )
+    try {
+      await api.chapters.generateStream(
+        novelId,
+        chapterNum,
+        chunk => setContent(prev => prev + chunk),
+        () => {
+          setIsGenerating(false)
+          setStatus('生成完成，正在更新记忆...')
+          setTimeout(() => setStatus(''), 3000)
+        },
+        err => {
+          setIsGenerating(false)
+          setStatus(`错误: ${err}`)
+        }
+      )
+    } catch (err) {
+      setIsGenerating(false)
+      setStatus(`错误: ${String(err)}`)
+    }
   }
 
   async function handleSave() {
@@ -98,7 +103,11 @@ export default function Writer() {
         >
           保存编辑
         </button>
-        {status && <span className="text-sm text-green-700">{status}</span>}
+        {status && (
+          <span className={`text-sm ${status.startsWith('错误') || status.startsWith('保存失败') ? 'text-red-600' : 'text-green-700'}`}>
+            {status}
+          </span>
+        )}
       </div>
 
       <textarea
