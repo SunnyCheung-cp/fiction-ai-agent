@@ -176,7 +176,7 @@ class Database:
         return [dict(r) for r in reversed(rows)]
 
     def migrate(self):
-        """Add new columns to existing tables; safe to run on fresh DBs."""
+        import sqlite3 as _sqlite3
         migrations = [
             ("novels", "auto_generate", "INTEGER NOT NULL DEFAULT 0"),
             ("novels", "daily_time", "TEXT NOT NULL DEFAULT '08:00'"),
@@ -185,8 +185,9 @@ class Database:
             for table, col, definition in migrations:
                 try:
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
-                except Exception:
-                    pass  # column already exists
+                except _sqlite3.OperationalError as e:
+                    if "duplicate column name" not in str(e):
+                        raise
 
     def set_auto_generate(self, novel_id: str, enabled: bool, daily_time: str):
         with self._conn() as conn:
@@ -198,7 +199,7 @@ class Database:
     def list_auto_generate_novels(self) -> list[dict]:
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT id, title, daily_time FROM novels WHERE auto_generate = 1"
+                "SELECT id, title, daily_time FROM novels WHERE auto_generate = 1 ORDER BY created_at"
             ).fetchall()
         return [dict(r) for r in rows]
 
