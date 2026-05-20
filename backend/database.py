@@ -53,6 +53,7 @@ class Database:
                     PRIMARY KEY (novel_id, chapter_num)
                 );
             """)
+        self.migrate()
 
     def create_novel(self, title: str, world_bible: str = "") -> str:
         novel_id = str(uuid.uuid4())
@@ -173,3 +174,82 @@ class Database:
                 (novel_id, current_chapter, limit)
             ).fetchall()
         return [dict(r) for r in reversed(rows)]
+
+    def migrate(self):
+        """Add new columns to existing tables; safe to run on fresh DBs."""
+        migrations = [
+            ("novels", "auto_generate", "INTEGER NOT NULL DEFAULT 0"),
+            ("novels", "daily_time", "TEXT NOT NULL DEFAULT '08:00'"),
+        ]
+        with self._conn() as conn:
+            for table, col, definition in migrations:
+                try:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {definition}")
+                except Exception:
+                    pass  # column already exists
+
+    def set_auto_generate(self, novel_id: str, enabled: bool, daily_time: str):
+        with self._conn() as conn:
+            conn.execute(
+                "UPDATE novels SET auto_generate = ?, daily_time = ? WHERE id = ?",
+                (1 if enabled else 0, daily_time, novel_id)
+            )
+
+    def list_auto_generate_novels(self) -> list[dict]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT id, title, daily_time FROM novels WHERE auto_generate = 1"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_next_chapter_num(self, novel_id: str) -> int:
+        with self._conn() as conn:
+            row = conn.execute(
+                "SELECT MAX(chapter_num) FROM chapters WHERE novel_id = ?",
+                (novel_id,)
+            ).fetchone()
+        return (row[0] or 0) + 1
+
+    def list_chapters_with_status(self, novel_id: str) -> list[dict]:
+        with self._conn() as conn:
+            rows = conn.execute("""
+                SELECT chapter_num, content, summary
+                FROM chapters WHERE novel_id = ?
+                UNION
+                SELECT chapter_num, '' as content, '' as summary
+                FROM chapter_outlines
+                WHERE novel_id = ? AND chapter_num NOT IN (
+                    SELECT chapter_num FROM chapters WHERE novel_id = ?
+                )
+                ORDER BY chapter_num
+            """, (novel_id, novel_id, novel_id)).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            content = d.get("content", "") or ""
+            d["has_content"] = bool(content)
+            d["word_count"] = len(content)
+            result.append(d)
+        return result
+
+    def get_stats(self) -> dict:
+        with self._conn() as conn:
+            novel_count = conn.execute("SELECT COUNT(*) FROM novels").fetchone()[0]
+            total_chapters = conn.execute(
+                "SELECT COUNT(*) FROM chapters WHERE content != ''"
+            ).fetchone()[0]
+            auto_gen_count = conn.execute(
+                "SELECT COUNT(*) FROM novels WHERE auto_generate = 1"
+            ).fetchone()[0]
+            recent = conn.execute("""
+                SELECT c.novel_id, n.title as novel_title, c.chapter_num, c.created_at
+                FROM chapters c JOIN novels n ON c.novel_id = n.id
+                WHERE c.content != ''
+                ORDER BY c.created_at DESC LIMIT 10
+            """).fetchall()
+        return {
+            "novel_count": novel_count,
+            "total_chapters": total_chapters,
+            "auto_gen_count": auto_gen_count,
+            "recent_chapters": [dict(r) for r in recent],
+        }

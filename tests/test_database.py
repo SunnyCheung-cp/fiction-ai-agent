@@ -75,3 +75,71 @@ def test_list_novels(db):
     db.create_novel("小说B")
     novels = db.list_novels()
     assert len(novels) == 2
+
+# --- v2 additions ---
+
+def test_migrate_adds_columns(db):
+    novel_id = db.create_novel("仙侠传")
+    novel = db.get_novel(novel_id)
+    assert "auto_generate" in novel
+    assert "daily_time" in novel
+    assert novel["auto_generate"] == 0
+    assert novel["daily_time"] == "08:00"
+
+def test_set_auto_generate(db):
+    novel_id = db.create_novel("仙侠传")
+    db.set_auto_generate(novel_id, True, "09:30")
+    novel = db.get_novel(novel_id)
+    assert novel["auto_generate"] == 1
+    assert novel["daily_time"] == "09:30"
+
+def test_set_auto_generate_disable(db):
+    novel_id = db.create_novel("仙侠传")
+    db.set_auto_generate(novel_id, True, "08:00")
+    db.set_auto_generate(novel_id, False, "08:00")
+    assert db.get_novel(novel_id)["auto_generate"] == 0
+
+def test_list_auto_generate_novels(db):
+    id1 = db.create_novel("小说A")
+    db.create_novel("小说B")
+    db.set_auto_generate(id1, True, "08:00")
+    result = db.list_auto_generate_novels()
+    assert len(result) == 1
+    assert result[0]["id"] == id1
+    assert result[0]["daily_time"] == "08:00"
+
+def test_get_next_chapter_num_empty(db):
+    novel_id = db.create_novel("仙侠传")
+    assert db.get_next_chapter_num(novel_id) == 1
+
+def test_get_next_chapter_num_with_chapters(db):
+    novel_id = db.create_novel("仙侠传")
+    db.save_chapter_content(novel_id, 1, "第一章")
+    db.save_chapter_content(novel_id, 3, "第三章")
+    assert db.get_next_chapter_num(novel_id) == 4
+
+def test_list_chapters_with_status_mixed(db):
+    novel_id = db.create_novel("仙侠传")
+    db.upsert_outline(novel_id, 1, "第一章大纲")
+    db.upsert_outline(novel_id, 2, "第二章大纲")
+    db.save_chapter_content(novel_id, 1, "第一章正文内容")
+    rows = db.list_chapters_with_status(novel_id)
+    assert len(rows) == 2
+    ch1 = next(r for r in rows if r["chapter_num"] == 1)
+    ch2 = next(r for r in rows if r["chapter_num"] == 2)
+    assert ch1["has_content"] is True
+    assert ch1["word_count"] == len("第一章正文内容")
+    assert ch2["has_content"] is False
+    assert ch2["word_count"] == 0
+
+def test_get_stats(db):
+    id1 = db.create_novel("小说A")
+    db.create_novel("小说B")
+    db.set_auto_generate(id1, True, "08:00")
+    db.save_chapter_content(id1, 1, "第一章内容")
+    stats = db.get_stats()
+    assert stats["novel_count"] == 2
+    assert stats["total_chapters"] == 1
+    assert stats["auto_gen_count"] == 1
+    assert len(stats["recent_chapters"]) == 1
+    assert stats["recent_chapters"][0]["chapter_num"] == 1
