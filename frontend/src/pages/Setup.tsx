@@ -10,6 +10,7 @@ export default function Setup() {
   const [title, setTitle] = useState('')
   const [worldBible, setWorldBible] = useState('')
   const [characters, setCharacters] = useState<Character[]>([])
+  const [charProfiles, setCharProfiles] = useState<Record<string, string>>({})
   const [newCharName, setNewCharName] = useState('')
   const [newCharProfile, setNewCharProfile] = useState('')
   const [saving, setSaving] = useState(false)
@@ -20,30 +21,53 @@ export default function Setup() {
     api.novels.get(novelId).then(n => {
       setTitle(n.title)
       setWorldBible(n.world_bible)
-    })
-    api.characters.list(novelId).then(setCharacters)
+    }).catch(console.error)
+    api.characters.list(novelId).then(chars => {
+      setCharacters(chars)
+      setCharProfiles(Object.fromEntries(chars.map(c => [c.id, c.profile])))
+    }).catch(console.error)
   }, [novelId])
 
   async function handleSaveWorldBible() {
     if (!novelId) return
     setSaving(true)
-    await api.novels.update(novelId, worldBible)
-    setStatus('世界观已保存')
-    setSaving(false)
-    setTimeout(() => setStatus(''), 2000)
+    try {
+      await api.novels.update(novelId, worldBible)
+      setStatus('世界观已保存')
+      setTimeout(() => setStatus(''), 2000)
+    } catch {
+      setStatus('保存失败，请重试')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleCreateNovel() {
-    const novel = await api.novels.create(title, worldBible)
-    navigate(`/setup/${novel.id}`)
+    setSaving(true)
+    try {
+      const novel = await api.novels.create(title, worldBible)
+      navigate(`/setup/${novel.id}`)
+    } catch {
+      setStatus('创建失败，请重试')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleAddCharacter() {
     if (!novelId || !newCharName || !newCharProfile) return
-    const char = await api.characters.create(novelId, newCharName, newCharProfile)
-    setCharacters(prev => [...prev, char])
-    setNewCharName('')
-    setNewCharProfile('')
+    setSaving(true)
+    try {
+      const char = await api.characters.create(novelId, newCharName, newCharProfile)
+      setCharacters(prev => [...prev, char])
+      setCharProfiles(prev => ({ ...prev, [char.id]: char.profile }))
+      setNewCharName('')
+      setNewCharProfile('')
+    } catch {
+      setStatus('添加角色失败')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleUpdateChar(charId: string, profile: string) {
@@ -68,9 +92,10 @@ export default function Setup() {
           value={worldBible}
           onChange={e => setWorldBible(e.target.value)}
         />
+        {status && <span className="text-red-600 text-sm">{status}</span>}
         <button
           className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-          disabled={!title}
+          disabled={!title || saving}
           onClick={handleCreateNovel}
         >
           创建小说
@@ -109,7 +134,8 @@ export default function Setup() {
             <div className="font-medium">{c.name}</div>
             <textarea
               className="w-full border rounded px-2 py-1 text-sm h-20"
-              defaultValue={c.profile}
+              value={charProfiles[c.id] ?? c.profile}
+              onChange={e => setCharProfiles(prev => ({ ...prev, [c.id]: e.target.value }))}
               onBlur={e => handleUpdateChar(c.id, e.target.value)}
             />
           </div>
@@ -130,7 +156,7 @@ export default function Setup() {
           />
           <button
             className="bg-green-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50"
-            disabled={!newCharName || !newCharProfile}
+            disabled={!newCharName || !newCharProfile || saving}
             onClick={handleAddCharacter}
           >
             添加
