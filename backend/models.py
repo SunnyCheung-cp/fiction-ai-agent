@@ -5,15 +5,21 @@ from typing import Optional
 class NovelCreate(BaseModel):
     title: str
     world_bible: str = ""
+    auto_generate: bool = False
+    daily_time: str = "08:00"
 
 class NovelUpdate(BaseModel):
-    world_bible: str
+    world_bible: Optional[str] = None
+    auto_generate: Optional[bool] = None
+    daily_time: Optional[str] = None
 
 class NovelResponse(BaseModel):
     id: str
     title: str
     world_bible: str
     created_at: str
+    auto_generate: bool
+    daily_time: str
 
 class CharacterCreate(BaseModel):
     name: str
@@ -45,3 +51,22 @@ class ChapterResponse(BaseModel):
 
 class ChapterUpdate(BaseModel):
     content: str
+
+class ChapterListItem(BaseModel):
+    novel_id: str
+    chapter_num: int
+    word_count: int
+    has_content: bool
+    summary: str
+
+class RecentChapter(BaseModel):
+    novel_id: str
+    novel_title: str
+    chapter_num: int
+    created_at: str
+
+class StatsResponse(BaseModel):
+    novel_count: int
+    total_chapters: int
+    auto_gen_count: int
+    recent_chapters: list[RecentChapter]
