@@ -13,6 +13,13 @@ export default function NovelList() {
     api.novels.list().then(setNovels).catch(console.error)
   }, [])
 
+  async function handleDelete(e: React.MouseEvent, id: string, title: string) {
+    e.stopPropagation()
+    if (!window.confirm(`确定删除《${title}》？此操作不可恢复。`)) return
+    await api.novels.delete(id).catch(console.error)
+    setNovels(prev => prev.filter(n => n.id !== id))
+  }
+
   return (
     <Layout breadcrumbs={[{ label: '小说列表' }]}>
       <div className="space-y-6">
@@ -51,6 +58,12 @@ export default function NovelList() {
                     手动模式
                   </span>
                 )}
+                <button
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1"
+                  onClick={e => handleDelete(e, n.id, n.title)}
+                >
+                  删除
+                </button>
                 <span className="text-gray-400 text-sm">›</span>
               </div>
             </div>

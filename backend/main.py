@@ -134,6 +134,13 @@ def get_novel(novel_id: str, db: DB):
         raise HTTPException(status_code=404, detail="Novel not found")
     return novel
 
+@app.delete("/api/novels/{novel_id}", status_code=204)
+def delete_novel(novel_id: str, db: DB):
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
+    scheduler_module.unschedule_novel(novel_id)
+    db.delete_novel(novel_id)
+
 @app.put("/api/novels/{novel_id}", response_model=NovelResponse)
 def update_novel(novel_id: str, body: NovelUpdate, db: DB):
     novel = db.get_novel(novel_id)

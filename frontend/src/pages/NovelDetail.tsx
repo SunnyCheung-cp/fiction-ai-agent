@@ -26,6 +26,13 @@ export default function NovelDetail() {
     api.outlines.list(novelId).then(os => setOutlineCount(os.length)).catch(console.error)
   }, [novelId])
 
+  async function handleDelete() {
+    if (!novelId || !novel) return
+    if (!window.confirm(`确定删除《${novel.title}》？所有章节和设定将永久删除。`)) return
+    await api.novels.delete(novelId).catch(console.error)
+    navigate('/novels')
+  }
+
   async function handleBootstrap() {
     if (!novelId || bootstrapping) return
     setBootstrapping(true)
@@ -85,6 +92,12 @@ export default function NovelDetail() {
             <span className="bg-gray-100 text-gray-500 text-sm px-3 py-1 rounded-full">
               {novel.provider === 'deepseek' ? 'DeepSeek' : 'Claude'}
             </span>
+            <button
+              className="text-xs text-red-400 hover:text-red-600 mt-1"
+              onClick={handleDelete}
+            >
+              删除小说
+            </button>
           </div>
         </div>
 

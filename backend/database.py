@@ -55,6 +55,13 @@ class Database:
             """)
         self.migrate()
 
+    def delete_novel(self, novel_id: str):
+        with self._conn() as conn:
+            conn.execute("DELETE FROM characters WHERE novel_id = ?", (novel_id,))
+            conn.execute("DELETE FROM chapter_outlines WHERE novel_id = ?", (novel_id,))
+            conn.execute("DELETE FROM chapters WHERE novel_id = ?", (novel_id,))
+            conn.execute("DELETE FROM novels WHERE id = ?", (novel_id,))
+
     def create_novel(self, title: str, world_bible: str = "") -> str:
         novel_id = str(uuid.uuid4())
         with self._conn() as conn:

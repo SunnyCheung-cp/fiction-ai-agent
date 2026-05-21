@@ -21,8 +21,12 @@ export const api = {
     get: (id: string) => req<Novel>(`/novels/${id}`),
     create: (body: { title: string; world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
       req<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
-    update: (id: string, body: { world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
+    update: (id: string, body: { world_bible?: string; auto_generate?: boolean; daily_time?: string; provider?: string }) =>
       req<Novel>(`/novels/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    delete: async (id: string): Promise<void> => {
+      const res = await fetch(`${BASE}/novels/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+    },
     bootstrap: async (
       novelId: string,
       chapters: number,
