@@ -4,6 +4,8 @@ export interface Novel {
   title: string
   world_bible: string
   created_at: string
+  auto_generate: boolean
+  daily_time: string
 }
 
 export interface Character {
@@ -24,4 +26,26 @@ export interface Chapter {
   chapter_num: number
   content: string
   summary: string
+}
+
+export interface ChapterListItem {
+  novel_id: string
+  chapter_num: number
+  word_count: number
+  has_content: boolean
+  summary: string
+}
+
+export interface RecentChapter {
+  novel_id: string
+  novel_title: string
+  chapter_num: number
+  created_at: string
+}
+
+export interface Stats {
+  novel_count: number
+  total_chapters: number
+  auto_gen_count: number
+  recent_chapters: RecentChapter[]
 }

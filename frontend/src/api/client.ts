@@ -1,5 +1,5 @@
 // frontend/src/api/client.ts
-import type { Novel, Character, Outline, Chapter } from './types'
+import type { Novel, Character, Outline, Chapter, ChapterListItem, Stats } from './types'
 
 const BASE = '/api'
 
@@ -12,15 +12,17 @@ async function req<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
-// Novels
 export const api = {
+  stats: {
+    get: () => req<Stats>('/stats'),
+  },
   novels: {
     list: () => req<Novel[]>('/novels'),
     get: (id: string) => req<Novel>(`/novels/${id}`),
-    create: (title: string, world_bible: string) =>
-      req<Novel>('/novels', { method: 'POST', body: JSON.stringify({ title, world_bible }) }),
-    update: (id: string, world_bible: string) =>
-      req<Novel>(`/novels/${id}`, { method: 'PUT', body: JSON.stringify({ world_bible }) }),
+    create: (body: { title: string; world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
+      req<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: string, body: { world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
+      req<Novel>(`/novels/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   },
   characters: {
     list: (novelId: string) => req<Character[]>(`/novels/${novelId}/characters`),
@@ -44,6 +46,7 @@ export const api = {
       }),
   },
   chapters: {
+    list: (novelId: string) => req<ChapterListItem[]>(`/novels/${novelId}/chapters`),
     get: (novelId: string, num: number) => req<Chapter>(`/novels/${novelId}/chapters/${num}`),
     update: (novelId: string, num: number, content: string) =>
       req<Chapter>(`/novels/${novelId}/chapters/${num}`, {
@@ -72,7 +75,7 @@ export const api = {
         if (done) break
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''  // keep incomplete last line for next chunk
+        buffer = lines.pop() ?? ''
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const payload = line.slice(6)
