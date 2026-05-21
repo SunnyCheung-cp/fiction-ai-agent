@@ -10,6 +10,7 @@ export default function NovelCreate() {
   const [worldBible, setWorldBible] = useState('')
   const [autoGenerate, setAutoGenerate] = useState(false)
   const [dailyTime, setDailyTime] = useState('08:00')
+  const [provider, setProvider] = useState<'anthropic' | 'deepseek'>('anthropic')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,6 +24,7 @@ export default function NovelCreate() {
         world_bible: worldBible,
         auto_generate: autoGenerate,
         ...(autoGenerate ? { daily_time: dailyTime } : {}),
+        provider,
       })
       navigate(`/novels/${novel.id}`)
     } catch {
@@ -55,6 +57,33 @@ export default function NovelCreate() {
             value={worldBible}
             onChange={e => setWorldBible(e.target.value)}
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block font-medium">AI 模型</label>
+          <div className="flex gap-3">
+            {(['anthropic', 'deepseek'] as const).map(p => (
+              <label key={p} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="provider"
+                  value={p}
+                  checked={provider === p}
+                  onChange={() => setProvider(p)}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">
+                  {p === 'anthropic' ? 'Claude (Anthropic)' : 'DeepSeek'}
+                </span>
+              </label>
+            ))}
+          </div>
+          {provider === 'anthropic' && (
+            <p className="text-xs text-gray-400">需要 ANTHROPIC_API_KEY，质量更高</p>
+          )}
+          {provider === 'deepseek' && (
+            <p className="text-xs text-gray-400">需要 DEEPSEEK_API_KEY，费用更低</p>
+          )}
         </div>
 
         <div className="border rounded p-4 space-y-3">

@@ -16,6 +16,7 @@ export default function NovelSettings() {
   const [newCharProfile, setNewCharProfile] = useState('')
   const [autoGenerate, setAutoGenerate] = useState(false)
   const [dailyTime, setDailyTime] = useState('08:00')
+  const [provider, setProvider] = useState<'anthropic' | 'deepseek'>('anthropic')
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
 
@@ -26,6 +27,7 @@ export default function NovelSettings() {
       setWorldBible(n.world_bible)
       setAutoGenerate(n.auto_generate)
       setDailyTime(n.daily_time ?? '08:00')
+      setProvider((n.provider as 'anthropic' | 'deepseek') ?? 'anthropic')
     }).catch(console.error)
     api.characters.list(novelId).then(chars => {
       setCharacters(chars)
@@ -42,6 +44,7 @@ export default function NovelSettings() {
         world_bible: worldBible,
         auto_generate: autoGenerate,
         daily_time: dailyTime,
+        provider,
       })
       setStatus('设定已保存')
       setTimeout(() => setStatus(''), 2000)
@@ -118,6 +121,34 @@ export default function NovelSettings() {
                 onChange={e => setDailyTime(e.target.value)}
               />
             </div>
+          )}
+        </section>
+
+        {/* Provider */}
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">AI 模型</h2>
+          <div className="flex gap-3">
+            {(['anthropic', 'deepseek'] as const).map(p => (
+              <label key={p} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="provider"
+                  value={p}
+                  checked={provider === p}
+                  onChange={() => setProvider(p)}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">
+                  {p === 'anthropic' ? 'Claude (Anthropic)' : 'DeepSeek'}
+                </span>
+              </label>
+            ))}
+          </div>
+          {provider === 'anthropic' && (
+            <p className="text-xs text-gray-400">需要 ANTHROPIC_API_KEY，写作质量更高</p>
+          )}
+          {provider === 'deepseek' && (
+            <p className="text-xs text-gray-400">需要 DEEPSEEK_API_KEY，费用约低 10 倍</p>
           )}
         </section>
 

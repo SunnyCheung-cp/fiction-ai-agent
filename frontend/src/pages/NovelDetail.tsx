@@ -74,13 +74,18 @@ export default function NovelDetail() {
             <h1 className="text-3xl font-bold">{novel.title}</h1>
             <p className="text-sm text-gray-400 mt-1">创建于 {novel.created_at?.slice(0, 10)}</p>
           </div>
-          {novel.auto_generate ? (
-            <span className="bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full">
-              每日 {novel.daily_time} 自动生成
+          <div className="flex flex-col items-end gap-2">
+            {novel.auto_generate ? (
+              <span className="bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full">
+                每日 {novel.daily_time} 自动生成
+              </span>
+            ) : (
+              <span className="bg-gray-100 text-gray-500 text-sm px-3 py-1 rounded-full">手动模式</span>
+            )}
+            <span className="bg-gray-100 text-gray-500 text-sm px-3 py-1 rounded-full">
+              {novel.provider === 'deepseek' ? 'DeepSeek' : 'Claude'}
             </span>
-          ) : (
-            <span className="bg-gray-100 text-gray-500 text-sm px-3 py-1 rounded-full">手动模式</span>
-          )}
+          </div>
         </div>
 
         {/* Quick stats */}

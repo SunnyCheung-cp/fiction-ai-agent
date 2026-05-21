@@ -6,6 +6,7 @@ export interface Novel {
   created_at: string
   auto_generate: boolean
   daily_time: string
+  provider: string
 }
 
 export interface Character {
