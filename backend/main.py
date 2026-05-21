@@ -69,9 +69,9 @@ def get_stats(db: DB):
 @app.post("/api/novels/{novel_id}/bootstrap")
 async def bootstrap_novel(
     novel_id: str,
+    db: DB,
     chapters: int = 20,
     genre_hint: str = "",
-    db: DB = Depends(get_db),
 ):
     novel = db.get_novel(novel_id)
     if not novel:
