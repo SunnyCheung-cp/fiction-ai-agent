@@ -1,17 +1,17 @@
 # backend/models.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 class NovelCreate(BaseModel):
     title: str
     world_bible: str = ""
     auto_generate: bool = False
-    daily_time: str = "08:00"
+    daily_time: str = Field("08:00", pattern=r"^\d{2}:\d{2}$")
 
 class NovelUpdate(BaseModel):
     world_bible: Optional[str] = None
     auto_generate: Optional[bool] = None
-    daily_time: Optional[str] = None
+    daily_time: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
 
 class NovelResponse(BaseModel):
     id: str

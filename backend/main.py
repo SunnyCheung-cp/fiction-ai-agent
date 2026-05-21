@@ -90,10 +90,10 @@ def update_novel(novel_id: str, body: NovelUpdate, db: DB):
         db.update_world_bible(novel_id, body.world_bible)
     if body.auto_generate is not None or body.daily_time is not None:
         enabled = body.auto_generate if body.auto_generate is not None else bool(novel["auto_generate"])
-        time = body.daily_time if body.daily_time is not None else novel["daily_time"]
-        db.set_auto_generate(novel_id, enabled, time)
+        sched_time = body.daily_time if body.daily_time is not None else novel["daily_time"]
+        db.set_auto_generate(novel_id, enabled, sched_time)
         if enabled:
-            scheduler_module.schedule_novel(novel_id, time)
+            scheduler_module.schedule_novel(novel_id, sched_time)
         else:
             scheduler_module.unschedule_novel(novel_id)
     return db.get_novel(novel_id)
@@ -160,10 +160,17 @@ def list_chapters(novel_id: str, db: DB):
 
 @app.get("/api/novels/{novel_id}/chapters/{chapter_num}", response_model=ChapterResponse)
 def get_chapter(novel_id: str, chapter_num: int, db: DB):
-    return db.get_chapter(novel_id, chapter_num)
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
+    chapter = db.get_chapter(novel_id, chapter_num)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return chapter
 
 @app.put("/api/novels/{novel_id}/chapters/{chapter_num}", response_model=ChapterResponse)
 def update_chapter(novel_id: str, chapter_num: int, body: ChapterUpdate, db: DB):
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
     db.save_chapter_content(novel_id, chapter_num, body.content)
     return db.get_chapter(novel_id, chapter_num)
 
