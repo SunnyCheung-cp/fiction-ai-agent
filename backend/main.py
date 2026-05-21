@@ -1,6 +1,7 @@
 # backend/main.py
 import asyncio
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -12,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from backend.database import Database
 from backend.memory_manager import MemoryManager
 from backend import scheduler as scheduler_module
+from backend import bootstrap as bootstrap_module
 from backend.scheduler import scheduler as _scheduler
 from backend.models import (
     NovelCreate, NovelUpdate, NovelResponse,
@@ -22,6 +24,8 @@ from backend.models import (
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 _db: Database | None = None
 
@@ -59,6 +63,52 @@ DB = Annotated[Database, Depends(get_db)]
 @app.get("/api/stats", response_model=StatsResponse)
 def get_stats(db: DB):
     return db.get_stats()
+
+# --- Bootstrap ---
+
+@app.post("/api/novels/{novel_id}/bootstrap")
+async def bootstrap_novel(
+    novel_id: str,
+    chapters: int = 20,
+    genre_hint: str = "",
+    db: DB = Depends(get_db),
+):
+    novel = db.get_novel(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="Novel not found")
+
+    async def event_stream():
+        try:
+            # Step 1: World Bible
+            yield f"data: {json.dumps({'type': 'progress', 'message': '正在生成世界观设定…'}, ensure_ascii=False)}\n\n"
+            world_bible = await bootstrap_module.generate_world_bible(novel["title"], genre_hint)
+            db.update_world_bible(novel_id, world_bible)
+            yield f"data: {json.dumps({'type': 'world_bible', 'content': world_bible}, ensure_ascii=False)}\n\n"
+
+            # Step 2: Characters
+            yield f"data: {json.dumps({'type': 'progress', 'message': '正在创建角色档案…'}, ensure_ascii=False)}\n\n"
+            characters = await bootstrap_module.generate_characters(novel["title"], world_bible)
+            for char in characters:
+                db.create_character(novel_id, char["name"], char["profile"])
+            yield f"data: {json.dumps({'type': 'characters', 'count': len(characters), 'items': characters}, ensure_ascii=False)}\n\n"
+
+            # Step 3: Outlines
+            yield f"data: {json.dumps({'type': 'progress', 'message': f'正在编写前{chapters}章大纲…'}, ensure_ascii=False)}\n\n"
+            outlines = await bootstrap_module.generate_outlines(
+                novel["title"], world_bible, characters, chapters
+            )
+            for o in outlines:
+                db.upsert_outline(novel_id, o["chapter_num"], o["outline"])
+            yield f"data: {json.dumps({'type': 'outlines', 'count': len(outlines)}, ensure_ascii=False)}\n\n"
+
+            yield f"data: {json.dumps({'type': 'done', 'characters': len(characters), 'outlines': len(outlines)}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        except Exception as exc:
+            logger.error("Bootstrap failed for novel %s: %s", novel_id, exc)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 # --- Novels ---
 
