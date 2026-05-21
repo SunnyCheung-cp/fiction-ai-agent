@@ -23,6 +23,53 @@ export const api = {
       req<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
     update: (id: string, body: { world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
       req<Novel>(`/novels/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    bootstrap: async (
+      novelId: string,
+      chapters: number,
+      genreHint: string,
+      onProgress: (message: string) => void,
+      onDone: (summary: { characters: number; outlines: number }) => void,
+      onError: (err: string) => void
+    ) => {
+      const params = new URLSearchParams({
+        chapters: String(chapters),
+        genre_hint: genreHint,
+      })
+      const res = await fetch(`${BASE}/novels/${novelId}/bootstrap?${params}`, {
+        method: 'POST',
+      })
+      if (!res.ok || !res.body) {
+        onError(`HTTP ${res.status}`)
+        return
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const payload = line.slice(6)
+            if (payload === '[DONE]') return
+            try {
+              const parsed = JSON.parse(payload)
+              if (parsed.type === 'error') { onError(parsed.message); return }
+              if (parsed.type === 'progress') onProgress(parsed.message)
+              if (parsed.type === 'done') { onDone({ characters: parsed.characters, outlines: parsed.outlines }); return }
+            } catch (e) {
+              console.warn('bootstrap SSE parse error', e)
+            }
+          }
+        }
+      } catch (e) {
+        onError(String(e))
+      }
+    },
   },
   characters: {
     list: (novelId: string) => req<Character[]>(`/novels/${novelId}/characters`),

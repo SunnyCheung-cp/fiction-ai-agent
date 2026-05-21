@@ -12,6 +12,11 @@ export default function NovelDetail() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [chapterCount, setChapterCount] = useState(0)
   const [outlineCount, setOutlineCount] = useState(0)
+  const [showBootstrap, setShowBootstrap] = useState(false)
+  const [bootstrapChapters, setBootstrapChapters] = useState(20)
+  const [bootstrapGenre, setBootstrapGenre] = useState('')
+  const [bootstrapping, setBootstrapping] = useState(false)
+  const [bootstrapLog, setBootstrapLog] = useState<string[]>([])
 
   useEffect(() => {
     if (!novelId) return
@@ -20,6 +25,37 @@ export default function NovelDetail() {
     api.chapters.list(novelId).then(chs => setChapterCount(chs.filter(c => c.has_content).length)).catch(console.error)
     api.outlines.list(novelId).then(os => setOutlineCount(os.length)).catch(console.error)
   }, [novelId])
+
+  async function handleBootstrap() {
+    if (!novelId || bootstrapping) return
+    setBootstrapping(true)
+    setBootstrapLog([])
+    try {
+      await api.novels.bootstrap(
+        novelId,
+        bootstrapChapters,
+        bootstrapGenre,
+        msg => setBootstrapLog(prev => [...prev, msg]),
+        summary => {
+          setBootstrapLog(prev => [...prev, `✅ 完成：${summary.characters} 个角色，${summary.outlines} 章大纲`])
+          setBootstrapping(false)
+          setShowBootstrap(false)
+          // Refresh data
+          api.novels.get(novelId!).then(setNovel).catch(console.error)
+          api.characters.list(novelId!).then(setCharacters).catch(console.error)
+          api.chapters.list(novelId!).then(chs => setChapterCount(chs.filter(c => c.has_content).length)).catch(console.error)
+          api.outlines.list(novelId!).then(os => setOutlineCount(os.length)).catch(console.error)
+        },
+        err => {
+          setBootstrapLog(prev => [...prev, `❌ 错误: ${err}`])
+          setBootstrapping(false)
+        }
+      )
+    } catch (err) {
+      setBootstrapLog(prev => [...prev, `❌ 错误: ${String(err)}`])
+      setBootstrapping(false)
+    }
+  }
 
   if (!novel) {
     return (
@@ -68,6 +104,65 @@ export default function NovelDetail() {
           <NavBtn label="章节大纲" onClick={() => navigate(`/novels/${novelId}/outline`)} />
           <NavBtn label="设定" onClick={() => navigate(`/novels/${novelId}/settings`)} />
         </div>
+
+        {/* Bootstrap panel */}
+        <section className="border rounded p-4 bg-blue-50 border-blue-200 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-blue-800">AI 一键初始化</h2>
+              <p className="text-xs text-blue-600 mt-0.5">自动生成世界观、角色档案和章节大纲</p>
+            </div>
+            <button
+              className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+              disabled={bootstrapping}
+              onClick={() => setShowBootstrap(v => !v)}
+            >
+              {bootstrapping ? '初始化中…' : 'AI 初始化'}
+            </button>
+          </div>
+
+          {showBootstrap && !bootstrapping && (
+            <div className="space-y-3 pt-2 border-t border-blue-200">
+              <div className="flex gap-4 items-end flex-wrap">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-blue-800">生成章节数</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={100}
+                    className="border rounded px-2 py-1 w-20 text-sm"
+                    value={bootstrapChapters}
+                    onChange={e => setBootstrapChapters(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-1 flex-1">
+                  <label className="text-xs font-medium text-blue-800">类型提示（可选）</label>
+                  <input
+                    type="text"
+                    className="border rounded px-2 py-1 w-full text-sm"
+                    placeholder="如：玄幻、都市、科幻…"
+                    value={bootstrapGenre}
+                    onChange={e => setBootstrapGenre(e.target.value)}
+                  />
+                </div>
+                <button
+                  className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700"
+                  onClick={handleBootstrap}
+                >
+                  开始生成
+                </button>
+              </div>
+            </div>
+          )}
+
+          {bootstrapLog.length > 0 && (
+            <div className="space-y-1 pt-2 border-t border-blue-200">
+              {bootstrapLog.map((log, i) => (
+                <p key={i} className="text-xs text-blue-700">{log}</p>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Characters preview */}
         {characters.length > 0 && (
