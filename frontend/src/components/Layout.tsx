@@ -1,44 +1,62 @@
 // frontend/src/components/Layout.tsx
 import { useNavigate } from 'react-router-dom'
 
-interface Breadcrumb {
-  label: string
-  href?: string
-}
-
 interface LayoutProps {
-  breadcrumbs?: Breadcrumb[]
   children: React.ReactNode
+  novelTitle?: string
+  novelId?: string
+  activeTab?: 'chapters' | 'outline' | 'settings'
+  // backward-compat: old pages pass breadcrumbs until deleted in Task 11
+  breadcrumbs?: unknown
 }
 
-export default function Layout({ breadcrumbs = [], children }: LayoutProps) {
+const TABS = [
+  { key: 'chapters' as const, label: '章节列表', href: (id: string) => `/novels/${id}/chapters` },
+  { key: 'outline' as const, label: '章节大纲', href: (id: string) => `/novels/${id}/outline` },
+  { key: 'settings' as const, label: '设定与角色', href: (id: string) => `/novels/${id}/settings` },
+]
+
+export default function Layout({ children, novelTitle, novelId, activeTab }: LayoutProps) {
   const navigate = useNavigate()
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b px-6 py-3 flex items-center gap-2 text-sm">
+    <div className="min-h-screen bg-base text-slate-100">
+      {/* Topbar */}
+      <header className="fixed top-0 inset-x-0 z-50 h-14 bg-surface border-b border-rim flex items-center px-6 gap-4">
         <button
-          className="font-bold text-blue-600 hover:underline"
           onClick={() => navigate('/')}
+          className="text-sm font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity shrink-0"
         >
           AI 小说工坊
         </button>
-        {breadcrumbs.map((crumb, i) => (
-          <span key={i} className="flex items-center gap-2">
-            <span className="text-gray-400">/</span>
-            {crumb.href ? (
+        {novelTitle && (
+          <span className="text-sm text-slate-400 truncate">{novelTitle}</span>
+        )}
+      </header>
+
+      {/* Tab navigation — only when inside a novel */}
+      {novelId && (
+        <nav className="fixed top-14 inset-x-0 z-40 bg-surface border-b border-rim">
+          <div className="max-w-5xl mx-auto px-6 flex">
+            {TABS.map(tab => (
               <button
-                className="text-blue-600 hover:underline"
-                onClick={() => navigate(crumb.href!)}
+                key={tab.key}
+                onClick={() => navigate(tab.href(novelId))}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-indigo-500 text-indigo-400'
+                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                }`}
               >
-                {crumb.label}
+                {tab.label}
               </button>
-            ) : (
-              <span className="text-gray-600">{crumb.label}</span>
-            )}
-          </span>
-        ))}
-      </nav>
-      <main className="max-w-5xl mx-auto p-6">
+            ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Main */}
+      <main className={`max-w-5xl mx-auto px-6 pb-16 ${novelId ? 'pt-[7rem]' : 'pt-20'}`}>
         {children}
       </main>
     </div>
