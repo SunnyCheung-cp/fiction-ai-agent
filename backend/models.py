@@ -7,11 +7,13 @@ class NovelCreate(BaseModel):
     world_bible: str = ""
     auto_generate: bool = False
     daily_time: str = Field("08:00", pattern=r"^\d{2}:\d{2}$")
+    provider: str = "anthropic"
 
 class NovelUpdate(BaseModel):
     world_bible: Optional[str] = None
     auto_generate: Optional[bool] = None
     daily_time: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    provider: Optional[str] = None
 
 class NovelResponse(BaseModel):
     id: str
@@ -20,6 +22,7 @@ class NovelResponse(BaseModel):
     created_at: str
     auto_generate: bool
     daily_time: str
+    provider: str
 
 class CharacterCreate(BaseModel):
     name: str

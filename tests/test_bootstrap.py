@@ -10,7 +10,7 @@ async def test_generate_world_bible_returns_string():
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-    with patch("backend.bootstrap.get_client", return_value=mock_client):
+    with patch("backend.bootstrap.get_anthropic_client", return_value=mock_client):
         from backend.bootstrap import generate_world_bible
         result = await generate_world_bible("仙侠传", "仙侠")
 
@@ -28,7 +28,7 @@ async def test_generate_characters_returns_list():
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-    with patch("backend.bootstrap.get_client", return_value=mock_client):
+    with patch("backend.bootstrap.get_anthropic_client", return_value=mock_client):
         from backend.bootstrap import generate_characters
         result = await generate_characters("仙侠传", "世界观内容")
 
@@ -48,7 +48,7 @@ async def test_generate_outlines_returns_list():
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
     characters = [{"name": "主角", "profile": "主角档案"}]
-    with patch("backend.bootstrap.get_client", return_value=mock_client):
+    with patch("backend.bootstrap.get_anthropic_client", return_value=mock_client):
         from backend.bootstrap import generate_outlines
         result = await generate_outlines("仙侠传", "世界观", characters, count=2)
 
@@ -67,7 +67,7 @@ async def test_generate_characters_handles_json_with_prefix():
     mock_client = AsyncMock()
     mock_client.messages.create = AsyncMock(return_value=mock_response)
 
-    with patch("backend.bootstrap.get_client", return_value=mock_client):
+    with patch("backend.bootstrap.get_anthropic_client", return_value=mock_client):
         from backend.bootstrap import generate_characters
         result = await generate_characters("测试", "设定")
 

@@ -180,6 +180,7 @@ class Database:
         migrations = [
             ("novels", "auto_generate", "INTEGER NOT NULL DEFAULT 0"),
             ("novels", "daily_time", "TEXT NOT NULL DEFAULT '08:00'"),
+            ("novels", "provider", "TEXT NOT NULL DEFAULT 'anthropic'"),
         ]
         with self._conn() as conn:
             for table, col, definition in migrations:
@@ -188,6 +189,10 @@ class Database:
                 except _sqlite3.OperationalError as e:
                     if "duplicate column name" not in str(e):
                         raise
+
+    def set_provider(self, novel_id: str, provider: str):
+        with self._conn() as conn:
+            conn.execute("UPDATE novels SET provider = ? WHERE id = ?", (provider, novel_id))
 
     def set_auto_generate(self, novel_id: str, enabled: bool, daily_time: str):
         with self._conn() as conn:

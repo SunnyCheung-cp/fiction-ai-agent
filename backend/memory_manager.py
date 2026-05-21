@@ -4,10 +4,10 @@ from backend.vector_store import VectorStore
 from backend.novel_engine import NovelEngine
 
 class MemoryManager:
-    def __init__(self, novel_id: str, chroma_path: str = "data/chroma"):
+    def __init__(self, novel_id: str, chroma_path: str = "data/chroma", provider: str = "anthropic"):
         self.novel_id = novel_id
         self.vector_store = VectorStore(novel_id=novel_id, chroma_path=chroma_path)
-        self.engine = NovelEngine()
+        self.engine = NovelEngine(provider=provider)
 
     def build_context(self, chapter_num: int, db: Database) -> str:
         novel = db.get_novel(self.novel_id)

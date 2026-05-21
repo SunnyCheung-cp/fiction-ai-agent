@@ -34,8 +34,13 @@ def unschedule_novel(novel_id: str):
 async def generate_next_chapter(novel_id: str):
     try:
         db = Database("data/novel.db")
+        novel = db.get_novel(novel_id)
+        if not novel:
+            logger.error("Novel %s not found", novel_id)
+            return
+        provider = novel.get("provider", "anthropic")
         chapter_num = db.get_next_chapter_num(novel_id)
-        mm = MemoryManager(novel_id=novel_id)
+        mm = MemoryManager(novel_id=novel_id, provider=provider)
         context = mm.build_context(chapter_num=chapter_num, db=db)
         full_text = ""
         async for chunk in mm.engine.generate_chapter_stream(context):

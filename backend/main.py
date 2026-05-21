@@ -77,17 +77,19 @@ async def bootstrap_novel(
     if not novel:
         raise HTTPException(status_code=404, detail="Novel not found")
 
+    provider = novel.get("provider", "anthropic")
+
     async def event_stream():
         try:
             # Step 1: World Bible
             yield f"data: {json.dumps({'type': 'progress', 'message': '正在生成世界观设定…'}, ensure_ascii=False)}\n\n"
-            world_bible = await bootstrap_module.generate_world_bible(novel["title"], genre_hint)
+            world_bible = await bootstrap_module.generate_world_bible(novel["title"], genre_hint, provider)
             db.update_world_bible(novel_id, world_bible)
             yield f"data: {json.dumps({'type': 'world_bible', 'content': world_bible}, ensure_ascii=False)}\n\n"
 
             # Step 2: Characters
             yield f"data: {json.dumps({'type': 'progress', 'message': '正在创建角色档案…'}, ensure_ascii=False)}\n\n"
-            characters = await bootstrap_module.generate_characters(novel["title"], world_bible)
+            characters = await bootstrap_module.generate_characters(novel["title"], world_bible, provider)
             for char in characters:
                 db.create_character(novel_id, char["name"], char["profile"])
             yield f"data: {json.dumps({'type': 'characters', 'count': len(characters), 'items': characters}, ensure_ascii=False)}\n\n"
@@ -95,7 +97,7 @@ async def bootstrap_novel(
             # Step 3: Outlines
             yield f"data: {json.dumps({'type': 'progress', 'message': f'正在编写前{chapters}章大纲…'}, ensure_ascii=False)}\n\n"
             outlines = await bootstrap_module.generate_outlines(
-                novel["title"], world_bible, characters, chapters
+                novel["title"], world_bible, characters, chapters, provider
             )
             for o in outlines:
                 db.upsert_outline(novel_id, o["chapter_num"], o["outline"])
@@ -118,6 +120,7 @@ def create_novel(body: NovelCreate, db: DB):
     if body.auto_generate:
         db.set_auto_generate(novel_id, True, body.daily_time)
         scheduler_module.schedule_novel(novel_id, body.daily_time)
+    db.set_provider(novel_id, body.provider)
     return db.get_novel(novel_id)
 
 @app.get("/api/novels", response_model=list[NovelResponse])
@@ -146,6 +149,8 @@ def update_novel(novel_id: str, body: NovelUpdate, db: DB):
             scheduler_module.schedule_novel(novel_id, sched_time)
         else:
             scheduler_module.unschedule_novel(novel_id)
+    if body.provider is not None:
+        db.set_provider(novel_id, body.provider)
     return db.get_novel(novel_id)
 
 # --- Characters ---
@@ -226,10 +231,11 @@ def update_chapter(novel_id: str, chapter_num: int, body: ChapterUpdate, db: DB)
 
 @app.post("/api/novels/{novel_id}/chapters/{chapter_num}/generate")
 async def generate_chapter(novel_id: str, chapter_num: int, db: DB):
-    if not db.get_novel(novel_id):
+    novel = db.get_novel(novel_id)
+    if not novel:
         raise HTTPException(status_code=404, detail="Novel not found")
-
-    mm = MemoryManager(novel_id=novel_id)
+    provider = novel.get("provider", "anthropic")
+    mm = MemoryManager(novel_id=novel_id, provider=provider)
     context = mm.build_context(chapter_num=chapter_num, db=db)
 
     async def event_stream():
