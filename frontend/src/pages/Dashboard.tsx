@@ -36,13 +36,13 @@ export default function Dashboard() {
         {/* Recent chapters */}
         <section>
           <h2 className="text-lg font-semibold mb-3">最近生成</h2>
-          {stats?.recent_chapters.length === 0 && (
+          {stats?.recent_chapters?.length === 0 && (
             <p className="text-gray-400 text-sm">暂无生成记录</p>
           )}
           <div className="space-y-2">
-            {stats?.recent_chapters.map((ch, i) => (
+            {stats?.recent_chapters?.map((ch) => (
               <div
-                key={i}
+                key={`${ch.novel_id}-${ch.chapter_num}`}
                 className="bg-white border rounded p-3 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                 onClick={() => navigate(`/novels/${ch.novel_id}/chapters/${ch.chapter_num}`)}
               >

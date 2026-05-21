@@ -1,5 +1,5 @@
 // frontend/src/pages/ChapterList.tsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { api } from '../api/client'
@@ -12,7 +12,6 @@ export default function ChapterList() {
   const [chapters, setChapters] = useState<ChapterListItem[]>([])
   const [generatingNum, setGeneratingNum] = useState<number | null>(null)
   const [streamStatus, setStreamStatus] = useState('')
-  const abortRef = useRef(false)
 
   useEffect(() => {
     if (!novelId) return
@@ -22,7 +21,6 @@ export default function ChapterList() {
 
   async function handleGenerate(chapterNum: number) {
     if (!novelId || generatingNum !== null) return
-    abortRef.current = false
     setGeneratingNum(chapterNum)
     setStreamStatus('生成中…')
 

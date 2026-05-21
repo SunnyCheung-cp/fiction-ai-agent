@@ -11,16 +11,20 @@ export default function ChapterDetail() {
   const chapterNum = Number(num)
 
   const [novel, setNovel] = useState<Novel | null>(null)
+  const [totalChapters, setTotalChapters] = useState(0)
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [status, setStatus] = useState('')
-  const contentRef = useRef<HTMLTextAreaElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const contentDivRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!novelId) return
     api.novels.get(novelId).then(setNovel).catch(console.error)
+    api.chapters.list(novelId).then(chs => setTotalChapters(chs.length > 0 ? Math.max(...chs.map(c => c.chapter_num)) : 0)).catch(console.error)
   }, [novelId])
 
   useEffect(() => {
@@ -32,8 +36,8 @@ export default function ChapterDetail() {
   }, [novelId, chapterNum])
 
   useEffect(() => {
-    if (isGenerating && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    if (isGenerating && contentDivRef.current) {
+      contentDivRef.current.scrollTop = contentDivRef.current.scrollHeight
     }
   }, [chapter?.content, isGenerating])
 
@@ -74,7 +78,8 @@ export default function ChapterDetail() {
   }
 
   async function handleSave() {
-    if (!novelId) return
+    if (!novelId || isSaving) return
+    setIsSaving(true)
     try {
       const updated = await api.chapters.update(novelId, chapterNum, editContent)
       setChapter(updated)
@@ -83,6 +88,8 @@ export default function ChapterDetail() {
       setTimeout(() => setStatus(''), 2000)
     } catch {
       setStatus('保存失败')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -118,6 +125,7 @@ export default function ChapterDetail() {
               <>
                 <button
                   className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+                  disabled={isSaving}
                   onClick={handleSave}
                 >
                   保存
@@ -152,14 +160,14 @@ export default function ChapterDetail() {
         {/* Content */}
         {editing ? (
           <textarea
-            ref={contentRef}
+            ref={textareaRef}
             className="w-full border rounded px-4 py-3 h-[70vh] font-mono text-sm leading-relaxed resize-none"
             value={editContent}
             onChange={e => setEditContent(e.target.value)}
           />
         ) : (
           <div
-            ref={contentRef as unknown as React.RefObject<HTMLDivElement>}
+            ref={contentDivRef}
             className="w-full border rounded px-4 py-3 h-[70vh] font-mono text-sm leading-relaxed overflow-y-auto bg-white whitespace-pre-wrap"
           >
             {chapter?.content || <span className="text-gray-300">（暂无内容）</span>}
@@ -176,12 +184,14 @@ export default function ChapterDetail() {
               ← 第 {chapterNum - 1} 章
             </button>
           ) : <span />}
-          <button
-            className="text-blue-600 hover:underline"
-            onClick={() => navigate(`/novels/${novelId}/chapters/${chapterNum + 1}`)}
-          >
-            第 {chapterNum + 1} 章 →
-          </button>
+          {chapterNum < totalChapters ? (
+            <button
+              className="text-blue-600 hover:underline"
+              onClick={() => navigate(`/novels/${novelId}/chapters/${chapterNum + 1}`)}
+            >
+              第 {chapterNum + 1} 章 →
+            </button>
+          ) : <span />}
         </div>
       </div>
     </Layout>

@@ -1,13 +1,12 @@
 // frontend/src/pages/NovelSettings.tsx
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import Layout from '../components/Layout'
 import { api } from '../api/client'
 import type { Character, Novel } from '../api/types'
 
 export default function NovelSettings() {
   const { novelId } = useParams<{ novelId: string }>()
-  const navigate = useNavigate()
 
   const [novel, setNovel] = useState<Novel | null>(null)
   const [worldBible, setWorldBible] = useState('')
@@ -26,7 +25,7 @@ export default function NovelSettings() {
       setNovel(n)
       setWorldBible(n.world_bible)
       setAutoGenerate(n.auto_generate)
-      setDailyTime(n.daily_time)
+      setDailyTime(n.daily_time ?? '08:00')
     }).catch(console.error)
     api.characters.list(novelId).then(chars => {
       setCharacters(chars)

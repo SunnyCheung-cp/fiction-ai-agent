@@ -22,7 +22,7 @@ export default function NovelCreate() {
         title,
         world_bible: worldBible,
         auto_generate: autoGenerate,
-        daily_time: dailyTime,
+        ...(autoGenerate ? { daily_time: dailyTime } : {}),
       })
       navigate(`/novels/${novel.id}`)
     } catch {
