@@ -11,11 +11,13 @@ from fastapi.responses import StreamingResponse
 
 from backend.database import Database
 from backend.memory_manager import MemoryManager
+from backend import scheduler as scheduler_module
+from backend.scheduler import scheduler as _scheduler
 from backend.models import (
     NovelCreate, NovelUpdate, NovelResponse,
     CharacterCreate, CharacterUpdate, CharacterResponse,
     OutlineUpsert, OutlineResponse,
-    ChapterResponse, ChapterUpdate,
+    ChapterResponse, ChapterUpdate, ChapterListItem, StatsResponse,
 )
 from dotenv import load_dotenv
 
@@ -23,8 +25,10 @@ load_dotenv()
 
 _db: Database | None = None
 
+
 def get_db() -> Database:
     return _db
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,7 +36,12 @@ async def lifespan(app: FastAPI):
     os.makedirs("data", exist_ok=True)
     _db = Database("data/novel.db")
     _db.initialize()
+    _scheduler.start()
+    for novel in _db.list_auto_generate_novels():
+        scheduler_module.schedule_novel(novel["id"], novel["daily_time"])
     yield
+    _scheduler.shutdown(wait=False)
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -45,11 +54,20 @@ app.add_middleware(
 
 DB = Annotated[Database, Depends(get_db)]
 
+# --- Stats ---
+
+@app.get("/api/stats", response_model=StatsResponse)
+def get_stats(db: DB):
+    return db.get_stats()
+
 # --- Novels ---
 
 @app.post("/api/novels", response_model=NovelResponse)
 def create_novel(body: NovelCreate, db: DB):
     novel_id = db.create_novel(body.title, body.world_bible)
+    if body.auto_generate:
+        db.set_auto_generate(novel_id, True, body.daily_time)
+        scheduler_module.schedule_novel(novel_id, body.daily_time)
     return db.get_novel(novel_id)
 
 @app.get("/api/novels", response_model=list[NovelResponse])
@@ -68,7 +86,16 @@ def update_novel(novel_id: str, body: NovelUpdate, db: DB):
     novel = db.get_novel(novel_id)
     if not novel:
         raise HTTPException(status_code=404, detail="Novel not found")
-    db.update_world_bible(novel_id, body.world_bible)
+    if body.world_bible is not None:
+        db.update_world_bible(novel_id, body.world_bible)
+    if body.auto_generate is not None or body.daily_time is not None:
+        enabled = body.auto_generate if body.auto_generate is not None else bool(novel["auto_generate"])
+        time = body.daily_time if body.daily_time is not None else novel["daily_time"]
+        db.set_auto_generate(novel_id, enabled, time)
+        if enabled:
+            scheduler_module.schedule_novel(novel_id, time)
+        else:
+            scheduler_module.unschedule_novel(novel_id)
     return db.get_novel(novel_id)
 
 # --- Characters ---
@@ -118,6 +145,18 @@ def list_outlines(novel_id: str, db: DB):
     return db.get_outlines(novel_id)
 
 # --- Chapters ---
+
+@app.get("/api/novels/{novel_id}/chapters", response_model=list[ChapterListItem])
+def list_chapters(novel_id: str, db: DB):
+    if not db.get_novel(novel_id):
+        raise HTTPException(status_code=404, detail="Novel not found")
+    rows = db.list_chapters_with_status(novel_id)
+    return [
+        {"novel_id": novel_id, "chapter_num": r["chapter_num"],
+         "word_count": r["word_count"], "has_content": r["has_content"],
+         "summary": r.get("summary", "")}
+        for r in rows
+    ]
 
 @app.get("/api/novels/{novel_id}/chapters/{chapter_num}", response_model=ChapterResponse)
 def get_chapter(novel_id: str, chapter_num: int, db: DB):
