@@ -43,11 +43,11 @@ export default function NovelDetail() {
         bootstrapChapters,
         bootstrapGenre,
         msg => setBootstrapLog(prev => [...prev, msg]),
+        () => {},   // onStepComplete — no-op
         summary => {
           setBootstrapLog(prev => [...prev, `✅ 完成：${summary.characters} 个角色，${summary.outlines} 章大纲`])
           setBootstrapping(false)
           setShowBootstrap(false)
-          // Refresh data
           api.novels.get(novelId!).then(setNovel).catch(console.error)
           api.characters.list(novelId!).then(setCharacters).catch(console.error)
           api.chapters.list(novelId!).then(chs => setChapterCount(chs.filter(c => c.has_content).length)).catch(console.error)

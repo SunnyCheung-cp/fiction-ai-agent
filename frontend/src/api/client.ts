@@ -19,7 +19,7 @@ export const api = {
   novels: {
     list: () => req<Novel[]>('/novels'),
     get: (id: string) => req<Novel>(`/novels/${id}`),
-    create: (body: { title: string; world_bible?: string; auto_generate?: boolean; daily_time?: string }) =>
+    create: (body: { title: string; world_bible?: string; auto_generate?: boolean; daily_time?: string; provider?: string }) =>
       req<Novel>('/novels', { method: 'POST', body: JSON.stringify(body) }),
     update: (id: string, body: { world_bible?: string; auto_generate?: boolean; daily_time?: string; provider?: string }) =>
       req<Novel>(`/novels/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -32,6 +32,7 @@ export const api = {
       chapters: number,
       genreHint: string,
       onProgress: (message: string) => void,
+      onStepComplete: (step: 'world_bible' | 'characters' | 'outlines') => void,
       onDone: (summary: { characters: number; outlines: number }) => void,
       onError: (err: string) => void
     ) => {
@@ -64,6 +65,9 @@ export const api = {
               const parsed = JSON.parse(payload)
               if (parsed.type === 'error') { onError(parsed.message); return }
               if (parsed.type === 'progress') onProgress(parsed.message)
+              if (parsed.type === 'world_bible') onStepComplete('world_bible')
+              if (parsed.type === 'characters') onStepComplete('characters')
+              if (parsed.type === 'outlines') onStepComplete('outlines')
               if (parsed.type === 'done') { onDone({ characters: parsed.characters, outlines: parsed.outlines }); return }
             } catch (e) {
               console.warn('bootstrap SSE parse error', e)
@@ -87,6 +91,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ profile }),
       }),
+    delete: async (novelId: string, charId: string): Promise<void> => {
+      const res = await fetch(`${BASE}/novels/${novelId}/characters/${charId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+    },
   },
   outlines: {
     list: (novelId: string) => req<Outline[]>(`/novels/${novelId}/outlines`),
@@ -95,6 +103,43 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ chapter_num, outline }),
       }),
+    generate: async (
+      novelId: string,
+      start: number,
+      count: number,
+      onProgress: (msg: string) => void,
+      onDone: (count: number) => void,
+      onError: (err: string) => void
+    ) => {
+      const params = new URLSearchParams({ start: String(start), count: String(count) })
+      const res = await fetch(`${BASE}/novels/${novelId}/outlines/generate?${params}`, { method: 'POST' })
+      if (!res.ok || !res.body) { onError(`HTTP ${res.status}`); return }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const payload = line.slice(6)
+            if (payload === '[DONE]') return
+            try {
+              const parsed = JSON.parse(payload)
+              if (parsed.type === 'error') { onError(parsed.message); return }
+              if (parsed.type === 'progress') onProgress(parsed.message)
+              if (parsed.type === 'done') { onDone(parsed.count); return }
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (e) {
+        onError(String(e))
+      }
+    },
   },
   chapters: {
     list: (novelId: string) => req<ChapterListItem[]>(`/novels/${novelId}/chapters`),
