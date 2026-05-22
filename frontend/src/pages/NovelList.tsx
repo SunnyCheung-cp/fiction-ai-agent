@@ -2,12 +2,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
+import CreateNovelModal from '../components/CreateNovelModal'
 import { api } from '../api/client'
 import type { Novel } from '../api/types'
 
 export default function NovelList() {
   const navigate = useNavigate()
   const [novels, setNovels] = useState<Novel[]>([])
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     api.novels.list().then(setNovels).catch(console.error)
@@ -21,55 +23,56 @@ export default function NovelList() {
   }
 
   return (
-    <Layout breadcrumbs={[{ label: '小说列表' }]}>
+    <Layout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">小说列表</h1>
+        <div className="flex items-center justify-between pt-2">
+          <h1 className="text-2xl font-bold text-slate-100">我的小说</h1>
           <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            onClick={() => navigate('/novels/new')}
+            onClick={() => setShowModal(true)}
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-all shadow-[0_0_16px_rgba(99,102,241,0.3)]"
           >
             + 新建小说
           </button>
         </div>
 
         {novels.length === 0 && (
-          <p className="text-gray-400">暂无小说，点击「新建小说」开始创作</p>
+          <p className="text-slate-600 text-sm pt-4">暂无小说，点击「新建小说」开始创作</p>
         )}
 
-        <div className="grid gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           {novels.map(n => (
             <div
               key={n.id}
-              className="bg-white border rounded p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
-              onClick={() => navigate(`/novels/${n.id}`)}
+              className="bg-surface border border-rim rounded-xl p-5 cursor-pointer hover:border-indigo-500/50 hover:bg-surface-hover transition-all group relative"
+              onClick={() => navigate(`/novels/${n.id}/chapters`)}
             >
-              <div className="space-y-1">
-                <div className="font-semibold text-lg">{n.title}</div>
-                <div className="text-sm text-gray-400">{n.created_at?.slice(0, 10)}</div>
-              </div>
-              <div className="flex items-center gap-3">
-                {n.auto_generate ? (
-                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                    每日 {n.daily_time} 自动生成
+              <div className="pr-8 space-y-2">
+                <div className="font-semibold text-slate-100 text-base leading-snug">{n.title}</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-slate-600">{n.created_at?.slice(0, 10)}</span>
+                  <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                    {n.provider === 'deepseek' ? 'DeepSeek' : 'Claude'}
                   </span>
-                ) : (
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
-                    手动模式
-                  </span>
-                )}
-                <button
-                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1"
-                  onClick={e => handleDelete(e, n.id, n.title)}
-                >
-                  删除
-                </button>
-                <span className="text-gray-400 text-sm">›</span>
+                  {n.auto_generate && (
+                    <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                      每日 {n.daily_time}
+                    </span>
+                  )}
+                </div>
               </div>
+              <button
+                className="absolute top-4 right-4 text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-lg leading-none"
+                onClick={e => handleDelete(e, n.id, n.title)}
+                title="删除"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
       </div>
+
+      <CreateNovelModal isOpen={showModal} onClose={() => setShowModal(false)} />
     </Layout>
   )
 }
