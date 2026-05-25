@@ -46,10 +46,31 @@ export default function NovelList() {
               className="bg-surface border border-rim rounded-xl p-5 cursor-pointer hover:border-indigo-500/50 hover:bg-surface-hover transition-all group relative"
               onClick={() => navigate(`/novels/${n.id}/chapters`)}
             >
-              <div className="pr-8 space-y-2">
+              <div className="pr-8 space-y-3">
                 <div className="font-semibold text-slate-100 text-base leading-snug">{n.title}</div>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                  <span className="flex items-center gap-1">
+                    <span className="text-slate-600">📖</span>
+                    {n.chapter_count} 章
+                  </span>
+                  <span className="text-rim">·</span>
+                  <span className="flex items-center gap-1">
+                    <span className="text-slate-600">✍️</span>
+                    {n.total_words > 0 ? formatWords(n.total_words) : '暂无内容'}
+                  </span>
+                  {n.updated_at && (
+                    <>
+                      <span className="text-rim">·</span>
+                      <span>更新 {n.updated_at.slice(0, 10)}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Badges row */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-slate-600">{n.created_at?.slice(0, 10)}</span>
+                  <span className="text-xs text-slate-600">{n.created_at?.slice(0, 10)} 创建</span>
                   <span className="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
                     {n.provider === 'deepseek' ? 'DeepSeek' : 'Claude'}
                   </span>
@@ -60,6 +81,7 @@ export default function NovelList() {
                   )}
                 </div>
               </div>
+
               <button
                 className="absolute top-4 right-4 text-slate-700 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-lg leading-none"
                 onClick={e => handleDelete(e, n.id, n.title)}
@@ -75,4 +97,9 @@ export default function NovelList() {
       <CreateNovelModal isOpen={showModal} onClose={() => setShowModal(false)} />
     </Layout>
   )
+}
+
+function formatWords(count: number): string {
+  if (count >= 10000) return `${(count / 10000).toFixed(1)} 万字`
+  return `${count} 字`
 }

@@ -22,7 +22,7 @@ export default function Layout({ children, novelTitle, novelId, activeTab }: Lay
   return (
     <div className="min-h-screen bg-base text-slate-100">
       {/* Topbar */}
-      <header className="fixed top-0 inset-x-0 z-50 h-14 bg-surface border-b border-rim flex items-center px-6 gap-4">
+      <header className="fixed top-0 inset-x-0 z-50 h-14 bg-surface/95 backdrop-blur-sm border-b border-rim shadow-sm flex items-center px-6 gap-4">
         <button
           onClick={() => navigate('/')}
           className="text-sm font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent hover:opacity-80 transition-opacity shrink-0"
@@ -36,7 +36,7 @@ export default function Layout({ children, novelTitle, novelId, activeTab }: Lay
 
       {/* Tab navigation — only when inside a novel */}
       {novelId && (
-        <nav className="fixed top-14 inset-x-0 z-40 bg-surface border-b border-rim">
+        <nav className="fixed top-14 inset-x-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-rim">
           <div className="max-w-5xl mx-auto px-6 flex">
             {TABS.map(tab => (
               <button

@@ -7,6 +7,9 @@ export interface Novel {
   auto_generate: boolean
   daily_time: string
   provider: string
+  chapter_count: number
+  total_words: number
+  updated_at: string | null
 }
 
 export interface Character {

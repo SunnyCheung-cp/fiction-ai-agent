@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Layout from '../components/Layout'
 import CreateNovelModal from '../components/CreateNovelModal'
 import { api } from '../api/client'
-import type { Stats } from '../api/types'
+import type { Stats, RecentChapter } from '../api/types'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -15,21 +15,32 @@ export default function Dashboard() {
     api.stats.get().then(setStats).catch(console.error)
   }, [])
 
+  // Group recent chapters by novel, keep last 5 chapters per novel, max 4 novels
+  const novelGroups = groupByNovel(stats?.recent_chapters ?? [])
+
   return (
     <Layout>
       <div className="space-y-10">
         {/* Hero */}
-        <div className="pt-8 pb-4 space-y-4">
+        <div className="pt-8 pb-2 space-y-4">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             AI 小说工坊
           </h1>
-          <p className="text-slate-400 text-lg">输入标题，AI 自动构建世界观、角色与大纲</p>
-          <button
-            onClick={() => setShowModal(true)}
-            className="mt-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-3 rounded-xl font-medium hover:opacity-90 transition-all shadow-[0_0_24px_rgba(99,102,241,0.35)] text-sm"
-          >
-            + 新建小说
-          </button>
+          <p className="text-slate-400 text-base">输入标题，AI 自动构建世界观、角色与大纲，一键生成章节</p>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-6 py-2.5 rounded-xl font-medium hover:opacity-90 transition-all shadow-[0_0_24px_rgba(99,102,241,0.35)] text-sm"
+            >
+              + 新建小说
+            </button>
+            <button
+              onClick={() => navigate('/novels')}
+              className="border border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 px-6 py-2.5 rounded-xl text-sm font-medium transition-all"
+            >
+              我的小说库 →
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -39,42 +50,87 @@ export default function Dashboard() {
           <StatCard label="自动生成中" value={stats?.auto_gen_count ?? '—'} icon="⚡" />
         </div>
 
-        {/* Recent chapters */}
-        <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-300">最近生成</h2>
-          {(!stats?.recent_chapters || stats.recent_chapters.length === 0) && (
-            <p className="text-slate-600 text-sm">暂无生成记录</p>
-          )}
-          <div className="space-y-2">
-            {stats?.recent_chapters?.map(ch => (
-              <div
-                key={`${ch.novel_id}-${ch.chapter_num}`}
-                className="bg-surface border border-rim rounded-xl px-4 py-3 flex justify-between items-center cursor-pointer hover:border-indigo-500/50 hover:bg-surface-hover transition-all group"
-                onClick={() => navigate(`/novels/${ch.novel_id}/chapters/${ch.chapter_num}`)}
+        {/* Recent by novel */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-300">最近创作</h2>
+            {novelGroups.length > 0 && (
+              <button
+                onClick={() => navigate('/novels')}
+                className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-slate-200">{ch.novel_title}</span>
-                  <span className="text-slate-500 text-sm">第 {ch.chapter_num} 章</span>
+                查看全部 →
+              </button>
+            )}
+          </div>
+
+          {novelGroups.length === 0 && (
+            <div className="bg-surface border border-rim rounded-xl p-8 text-center space-y-3">
+              <p className="text-slate-500 text-sm">还没有创作记录</p>
+              <button
+                onClick={() => setShowModal(true)}
+                className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
+              >
+                + 创建你的第一部小说
+              </button>
+            </div>
+          )}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {novelGroups.map(group => (
+              <div key={group.novel_id} className="bg-surface border border-rim rounded-xl overflow-hidden hover:border-indigo-500/40 transition-colors">
+                {/* Novel header */}
+                <div
+                  className="px-4 py-3 border-b border-rim flex items-center justify-between cursor-pointer hover:bg-surface-hover transition-colors"
+                  onClick={() => navigate(`/novels/${group.novel_id}/chapters`)}
+                >
+                  <span className="font-medium text-slate-100 text-sm truncate pr-2">{group.novel_title}</span>
+                  <span className="text-xs text-indigo-400 shrink-0">继续写作 →</span>
                 </div>
-                <span className="text-xs text-slate-600 group-hover:text-slate-400 transition-colors">
-                  {ch.created_at.slice(0, 16).replace('T', ' ')}
-                </span>
+                {/* Chapter list */}
+                <div className="divide-y divide-rim">
+                  {group.chapters.map(ch => (
+                    <div
+                      key={ch.chapter_num}
+                      className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-surface-hover transition-colors group"
+                      onClick={() => navigate(`/novels/${group.novel_id}/chapters/${ch.chapter_num}`)}
+                    >
+                      <span className="text-sm text-slate-400 group-hover:text-slate-200 transition-colors">
+                        第 {ch.chapter_num} 章
+                      </span>
+                      <span className="text-xs text-slate-600 group-hover:text-slate-500 transition-colors">
+                        {ch.created_at.slice(0, 16).replace('T', ' ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </section>
-
-        <button
-          className="text-indigo-400 hover:text-indigo-300 text-sm transition-colors"
-          onClick={() => navigate('/novels')}
-        >
-          查看全部小说 →
-        </button>
       </div>
 
       <CreateNovelModal isOpen={showModal} onClose={() => setShowModal(false)} />
     </Layout>
   )
+}
+
+interface NovelGroup {
+  novel_id: string
+  novel_title: string
+  chapters: RecentChapter[]
+}
+
+function groupByNovel(chapters: RecentChapter[]): NovelGroup[] {
+  const map = new Map<string, NovelGroup>()
+  for (const ch of chapters) {
+    if (!map.has(ch.novel_id)) {
+      map.set(ch.novel_id, { novel_id: ch.novel_id, novel_title: ch.novel_title, chapters: [] })
+    }
+    const group = map.get(ch.novel_id)!
+    if (group.chapters.length < 5) group.chapters.push(ch)
+  }
+  return Array.from(map.values()).slice(0, 4)
 }
 
 function StatCard({ label, value, icon }: { label: string; value: number | string; icon: string }) {

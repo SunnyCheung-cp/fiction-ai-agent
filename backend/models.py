@@ -23,6 +23,9 @@ class NovelResponse(BaseModel):
     auto_generate: bool
     daily_time: str
     provider: str
+    chapter_count: int = 0
+    total_words: int = 0
+    updated_at: Optional[str] = None
 
 class CharacterCreate(BaseModel):
     name: str

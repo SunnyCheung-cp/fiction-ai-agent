@@ -80,9 +80,17 @@ class Database:
 
     def list_novels(self) -> list[dict]:
         with self._conn() as conn:
-            rows = conn.execute(
-                "SELECT * FROM novels ORDER BY created_at DESC"
-            ).fetchall()
+            rows = conn.execute("""
+                SELECT
+                    n.*,
+                    COUNT(CASE WHEN c.content != '' AND c.content IS NOT NULL THEN 1 END) as chapter_count,
+                    COALESCE(SUM(CASE WHEN c.content != '' AND c.content IS NOT NULL THEN LENGTH(c.content) ELSE 0 END), 0) as total_words,
+                    MAX(c.created_at) as updated_at
+                FROM novels n
+                LEFT JOIN chapters c ON c.novel_id = n.id
+                GROUP BY n.id
+                ORDER BY n.created_at DESC
+            """).fetchall()
         return [dict(r) for r in rows]
 
     def update_world_bible(self, novel_id: str, world_bible: str):
@@ -230,13 +238,18 @@ class Database:
     def list_chapters_with_status(self, novel_id: str) -> list[dict]:
         with self._conn() as conn:
             rows = conn.execute("""
+                SELECT
+                    co.chapter_num,
+                    COALESCE(c.content, '') as content,
+                    COALESCE(NULLIF(c.summary, ''), co.outline, '') as summary
+                FROM chapter_outlines co
+                LEFT JOIN chapters c ON c.novel_id = co.novel_id AND c.chapter_num = co.chapter_num
+                WHERE co.novel_id = ?
+                UNION ALL
                 SELECT chapter_num, content, summary
-                FROM chapters WHERE novel_id = ?
-                UNION
-                SELECT chapter_num, '' as content, '' as summary
-                FROM chapter_outlines
+                FROM chapters
                 WHERE novel_id = ? AND chapter_num NOT IN (
-                    SELECT chapter_num FROM chapters WHERE novel_id = ?
+                    SELECT chapter_num FROM chapter_outlines WHERE novel_id = ?
                 )
                 ORDER BY chapter_num
             """, (novel_id, novel_id, novel_id)).fetchall()
@@ -262,7 +275,7 @@ class Database:
                 SELECT c.novel_id, n.title as novel_title, c.chapter_num, c.created_at
                 FROM chapters c JOIN novels n ON c.novel_id = n.id
                 WHERE c.content != ''
-                ORDER BY c.created_at DESC LIMIT 10
+                ORDER BY c.created_at DESC LIMIT 30
             """).fetchall()
         return {
             "novel_count": novel_count,
