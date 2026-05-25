@@ -69,36 +69,55 @@ async def generate_characters(title: str, world_bible: str, provider: str = "ant
     prompt = f"""你是一位专业的网络小说策划编辑。根据以下小说信息，创作主要角色档案。
 
 小说标题：{title}
-世界观设定：{world_bible}
+世界观设定（节选）：{world_bible[:600]}
 
 请创作3-5个主要角色。只返回JSON数组，不要其他内容：
 [{{"name": "角色名", "profile": "200-300字的详细档案，包含外貌、性格、背景、定位"}}]"""
     text = await _call(prompt, 2048, provider)
     start = text.find("[")
     end = text.rfind("]") + 1
+    if start == -1 or end == 0:
+        logger.error("generate_characters: no JSON array in response: %r", text[:300])
+        raise ValueError("模型未返回有效JSON角色数据，请重试")
     return json.loads(text[start:end])
 
 
 async def generate_outlines(
-    title: str, world_bible: str, characters: list[dict], count: int = 20, provider: str = "anthropic"
+    title: str,
+    world_bible: str,
+    characters: list[dict],
+    count: int = 20,
+    provider: str = "anthropic",
+    start_chapter: int = 1,
+    existing_outlines: list[dict] | None = None,
 ) -> list[dict]:
     char_summary = "\n".join(
         f"- {c['name']}: {c['profile'][:120]}…" for c in characters
     )
-    prompt = f"""你是一位专业的网络小说策划编辑。根据以下小说信息，创作前{count}章的详细大纲。
+    end_chapter = start_chapter + count - 1
+    existing_section = ""
+    if existing_outlines:
+        previews = "\n".join(
+            f"  第{o['chapter_num']}章：{o['outline'][:80]}…" for o in existing_outlines[-5:]
+        )
+        existing_section = f"\n已有大纲（最近几章，供衔接参考）：\n{previews}\n"
+    prompt = f"""你是一位专业的网络小说策划编辑。根据以下小说信息，创作第{start_chapter}章到第{end_chapter}章的详细大纲。
 
 小说标题：{title}
 世界观设定（节选）：{world_bible[:600]}
 主要角色：
-{char_summary}
+{char_summary}{existing_section}
 
-请创作第1章到第{count}章的大纲，每章100-150字，保证完整的故事弧线，节奏紧凑，有悬念和起伏。
+请创作第{start_chapter}章到第{end_chapter}章的大纲，每章100-150字，保证完整的故事弧线，节奏紧凑，有悬念和起伏。
 
 只返回JSON数组，不要其他内容：
-[{{"chapter_num": 1, "outline": "大纲内容"}}]"""
+[{{"chapter_num": {start_chapter}, "outline": "大纲内容"}}]"""
     text = await _call(prompt, 6000, provider)
     start = text.find("[")
     end = text.rfind("]") + 1
+    if start == -1 or end == 0:
+        logger.error("generate_outlines: no JSON array in response: %r", text[:300])
+        raise ValueError("模型未返回有效JSON大纲数据，请重试")
     return json.loads(text[start:end])
 
 

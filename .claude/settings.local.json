@@ -17,7 +17,19 @@
       "Bash(git -C /Users/cpuser/Desktop/Sunny/fiction-ai-agent log --oneline -5)",
       "Bash(git -C /Users/cpuser/Desktop/Sunny/fiction-ai-agent add backend/novel_engine.py tests/test_novel_engine.py pytest.ini)",
       "Bash(git -C /Users/cpuser/Desktop/Sunny/fiction-ai-agent commit -m ' *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git -C /Users/cpuser/Desktop/Sunny/fiction-ai-agent add backend/database.py tests/test_database.py)",
+      "Bash(git -C /Users/cpuser/Desktop/Sunny/fiction-ai-agent add backend/database.py)",
+      "Bash(xargs ls -la)",
+      "Bash(git *)",
+      "Bash(curl -s http://localhost:8000/api/novels)",
+      "Bash(curl -sv http://localhost:8000/api/novels)",
+      "Bash(NO_PROXY=localhost,127.0.0.1 curl *)",
+      "Bash(npm run *)",
+      "Bash(node -e ' *)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "Bash(grep *)"
     ]
   }
 }

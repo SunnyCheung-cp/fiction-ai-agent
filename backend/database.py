@@ -116,6 +116,10 @@ class Database:
                 (profile, char_id)
             )
 
+    def delete_character(self, char_id: str):
+        with self._conn() as conn:
+            conn.execute("DELETE FROM characters WHERE id = ?", (char_id,))
+
     def upsert_outline(self, novel_id: str, chapter_num: int, outline: str):
         with self._conn() as conn:
             conn.execute(

@@ -112,6 +112,45 @@ async def bootstrap_novel(
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
+# --- Outline generation ---
+
+@app.post("/api/novels/{novel_id}/outlines/generate")
+async def generate_outlines(
+    novel_id: str,
+    db: DB,
+    start: int = 1,
+    count: int = 20,
+):
+    novel = db.get_novel(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="Novel not found")
+
+    provider = novel.get("provider", "anthropic")
+    characters = db.get_characters(novel_id)
+    existing = db.get_outlines(novel_id)
+
+    async def event_stream():
+        try:
+            yield f"data: {json.dumps({'type': 'progress', 'message': f'正在生成第{start}章到第{start+count-1}章大纲…'}, ensure_ascii=False)}\n\n"
+            outlines = await bootstrap_module.generate_outlines(
+                title=novel["title"],
+                world_bible=novel.get("world_bible", ""),
+                characters=characters,
+                count=count,
+                provider=provider,
+                start_chapter=start,
+                existing_outlines=existing,
+            )
+            for o in outlines:
+                db.upsert_outline(novel_id, o["chapter_num"], o["outline"])
+            yield f"data: {json.dumps({'type': 'done', 'count': len(outlines)}, ensure_ascii=False)}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            logger.error("Outline generation failed for novel %s: %s", novel_id, exc)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
 # --- Novels ---
 
 @app.post("/api/novels", response_model=NovelResponse)
@@ -177,6 +216,13 @@ def list_characters(novel_id: str, db: DB):
     if not db.get_novel(novel_id):
         raise HTTPException(status_code=404, detail="Novel not found")
     return db.get_characters(novel_id)
+
+@app.delete("/api/novels/{novel_id}/characters/{char_id}", status_code=204)
+def delete_character(novel_id: str, char_id: str, db: DB):
+    chars = db.get_characters(novel_id)
+    if not any(c["id"] == char_id for c in chars):
+        raise HTTPException(status_code=404, detail="Character not found")
+    db.delete_character(char_id)
 
 @app.put("/api/novels/{novel_id}/characters/{char_id}", response_model=CharacterResponse)
 def update_character(novel_id: str, char_id: str, body: CharacterUpdate, db: DB):
