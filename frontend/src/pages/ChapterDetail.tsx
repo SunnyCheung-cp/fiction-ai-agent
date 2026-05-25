@@ -203,8 +203,8 @@ export default function ChapterDetail() {
 
   if (focusMode) {
     return (
-      <div className="min-h-screen bg-[#080810] text-slate-200">
-        <header className="fixed top-0 inset-x-0 h-12 bg-[#080810] border-b border-rim flex items-center justify-between px-8 z-50">
+      <div className="min-h-screen bg-[#090c14] text-slate-200">
+        <header className="fixed top-0 inset-x-0 h-12 bg-[#090c14] border-b border-rim flex items-center justify-between px-8 z-50">
           <span className="text-sm text-slate-500">{title} · 第 {chapterNum} 章</span>
           <div className="flex items-center gap-4">
             {toolbar}

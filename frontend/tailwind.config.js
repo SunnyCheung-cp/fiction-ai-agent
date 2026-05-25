@@ -4,10 +4,10 @@ export default {
   theme: {
     extend: {
       colors: {
-        base: '#0a0a0f',
-        surface: '#12121c',
-        'surface-hover': '#1a1a2e',
-        rim: '#1e1e30',
+        base: '#0d0f17',
+        surface: '#161a28',
+        'surface-hover': '#1f2438',
+        rim: '#2e3354',
       },
     },
   },
