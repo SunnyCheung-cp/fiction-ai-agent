@@ -149,6 +149,40 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ content, ...(title !== undefined && { title }) }),
       }),
+    backfillTitles: async (
+      novelId: string,
+      onTitle: (chapterNum: number, title: string) => void,
+      onDone: (count: number) => void,
+      onError: (err: string) => void
+    ) => {
+      const res = await fetch(`${BASE}/novels/${novelId}/chapters/backfill-titles`, { method: 'POST' })
+      if (!res.ok || !res.body) { onError(`HTTP ${res.status}`); return }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const payload = line.slice(6)
+            if (payload === '[DONE]') return
+            try {
+              const parsed = JSON.parse(payload)
+              if (parsed.type === 'error') { onError(parsed.message); return }
+              if (parsed.type === 'title') onTitle(parsed.chapter_num, parsed.title)
+              if (parsed.type === 'done') { onDone(parsed.count); return }
+            } catch { /* ignore */ }
+          }
+        }
+      } catch (e) {
+        onError(String(e))
+      }
+    },
     generateStream: async (
       novelId: string,
       num: number,

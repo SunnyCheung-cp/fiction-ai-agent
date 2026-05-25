@@ -285,6 +285,38 @@ def update_chapter(novel_id: str, chapter_num: int, body: ChapterUpdate, db: DB)
         db.save_chapter_title(novel_id, chapter_num, body.title)
     return db.get_chapter(novel_id, chapter_num)
 
+@app.post("/api/novels/{novel_id}/chapters/backfill-titles")
+async def backfill_titles(novel_id: str, db: DB):
+    novel = db.get_novel(novel_id)
+    if not novel:
+        raise HTTPException(status_code=404, detail="Novel not found")
+    provider = novel.get("provider", "anthropic")
+    from backend.novel_engine import NovelEngine
+    engine = NovelEngine(provider=provider)
+
+    chapters = [
+        c for c in db.list_chapters_with_status(novel_id)
+        if c.get("has_content") and not c.get("title", "").strip()
+    ]
+
+    async def event_stream():
+        try:
+            for ch in chapters:
+                chapter_data = db.get_chapter(novel_id, ch["chapter_num"])
+                content = chapter_data.get("content", "") if chapter_data else ""
+                if not content:
+                    continue
+                title = await engine.generate_title(content, ch["chapter_num"])
+                db.save_chapter_title(novel_id, ch["chapter_num"], title)
+                yield f"data: {json.dumps({'type': 'title', 'chapter_num': ch['chapter_num'], 'title': title}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'count': len(chapters)})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
 @app.post("/api/novels/{novel_id}/chapters/{chapter_num}/generate")
 async def generate_chapter(novel_id: str, chapter_num: int, db: DB):
     novel = db.get_novel(novel_id)

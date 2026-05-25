@@ -23,6 +23,8 @@ export default function ChapterList() {
   const [chapters, setChapters] = useState<ChapterListItem[]>([])
   const [generatingNum, setGeneratingNum] = useState<number | null>(null)
   const [streamStatus, setStreamStatus] = useState('')
+  const [backfillingTitles, setBackfillingTitles] = useState(false)
+  const [backfillStatus, setBackfillStatus] = useState('')
 
   // Bootstrap state
   const [bootstrapping, setBootstrapping] = useState(false)
@@ -89,6 +91,28 @@ export default function ChapterList() {
       setGeneratingNum(null)
       setStreamStatus(`错误: ${String(err)}`)
     }
+  }
+
+  async function handleBackfillTitles() {
+    if (!novelId || backfillingTitles) return
+    setBackfillingTitles(true)
+    setBackfillStatus('补充中…')
+    await api.chapters.backfillTitles(
+      novelId,
+      (chapterNum, title) => {
+        setChapters(prev => prev.map(c => c.chapter_num === chapterNum ? { ...c, title } : c))
+        setBackfillStatus(`已生成第 ${chapterNum} 章标题`)
+      },
+      count => {
+        setBackfillStatus(`完成，共补充 ${count} 个标题`)
+        setBackfillingTitles(false)
+        setTimeout(() => setBackfillStatus(''), 3000)
+      },
+      err => {
+        setBackfillStatus(`错误: ${err}`)
+        setBackfillingTitles(false)
+      }
+    )
   }
 
   function getNextUnwritten(): number {
@@ -179,10 +203,24 @@ export default function ChapterList() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-100">章节列表</h1>
           <div className="flex items-center gap-3">
+            {backfillStatus && (
+              <span className={`text-sm ${backfillStatus.startsWith('错误') ? 'text-red-400' : 'text-indigo-300'}`}>
+                {backfillStatus}
+              </span>
+            )}
             {streamStatus && (
               <span className={`text-sm ${streamStatus.startsWith('错误') ? 'text-red-400' : 'text-emerald-400'}`}>
                 {streamStatus}
               </span>
+            )}
+            {chapters.some(c => c.has_content && !c.title) && (
+              <button
+                className="border border-rim text-slate-400 px-3 py-2 rounded-lg text-sm hover:bg-surface-hover disabled:opacity-40 transition-all"
+                disabled={backfillingTitles || generatingNum !== null}
+                onClick={handleBackfillTitles}
+              >
+                {backfillingTitles ? 'AI 补充中…' : 'AI 补充标题'}
+              </button>
             )}
             <button
               className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40 transition-all"
