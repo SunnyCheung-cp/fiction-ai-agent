@@ -173,6 +173,15 @@ class Database:
                 (novel_id, chapter_num, summary, summary)
             )
 
+    def save_chapter_title(self, novel_id: str, chapter_num: int, title: str):
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO chapters (novel_id, chapter_num, title)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(novel_id, chapter_num) DO UPDATE SET title = excluded.title""",
+                (novel_id, chapter_num, title)
+            )
+
     def get_chapter(self, novel_id: str, chapter_num: int) -> Optional[dict]:
         with self._conn() as conn:
             row = conn.execute(
@@ -181,7 +190,7 @@ class Database:
             ).fetchone()
         if row:
             return dict(row)
-        return {"novel_id": novel_id, "chapter_num": chapter_num, "content": "", "summary": ""}
+        return {"novel_id": novel_id, "chapter_num": chapter_num, "content": "", "summary": "", "title": ""}
 
     def get_recent_summaries(self, novel_id: str, current_chapter: int, limit: int = 5) -> list[dict]:
         with self._conn() as conn:
@@ -200,6 +209,7 @@ class Database:
             ("novels", "auto_generate", "INTEGER NOT NULL DEFAULT 0"),
             ("novels", "daily_time", "TEXT NOT NULL DEFAULT '08:00'"),
             ("novels", "provider", "TEXT NOT NULL DEFAULT 'anthropic'"),
+            ("chapters", "title", "TEXT NOT NULL DEFAULT ''"),
         ]
         with self._conn() as conn:
             for table, col, definition in migrations:
@@ -241,12 +251,13 @@ class Database:
                 SELECT
                     co.chapter_num,
                     COALESCE(c.content, '') as content,
+                    COALESCE(c.title, '') as title,
                     COALESCE(NULLIF(c.summary, ''), co.outline, '') as summary
                 FROM chapter_outlines co
                 LEFT JOIN chapters c ON c.novel_id = co.novel_id AND c.chapter_num = co.chapter_num
                 WHERE co.novel_id = ?
                 UNION ALL
-                SELECT chapter_num, content, summary
+                SELECT chapter_num, content, COALESCE(title, '') as title, summary
                 FROM chapters
                 WHERE novel_id = ? AND chapter_num NOT IN (
                     SELECT chapter_num FROM chapter_outlines WHERE novel_id = ?

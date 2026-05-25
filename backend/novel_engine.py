@@ -59,6 +59,26 @@ class NovelEngine:
                 async for text in stream.text_stream:
                     yield text
 
+    async def generate_title(self, content: str, chapter_num: int) -> str:
+        prompt = (
+            f"请根据以下章节内容生成一个章节标题，要求：30字以内，不含"第{chapter_num}章"字样，"
+            f"概括核心情节或意境，只输出标题本身，不加引号或任何前缀。\n\n{content[:800]}"
+        )
+        if self.provider == "deepseek":
+            response = await self._ds_client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                max_tokens=60,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response.choices[0].message.content.strip()[:30]
+        else:
+            response = await self._anthropic_client.messages.create(
+                model=HAIKU_MODEL,
+                max_tokens=60,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return response.content[0].text.strip()[:30]
+
     async def summarize(self, content: str) -> str:
         prompt = f"请用100字以内概括以下章节的主要情节，只输出摘要，不要任何前缀：\n\n{content}"
         if self.provider == "deepseek":

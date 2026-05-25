@@ -28,6 +28,7 @@ export interface Outline {
 export interface Chapter {
   novel_id: string
   chapter_num: number
+  title: string
   content: string
   summary: string
 }
@@ -35,6 +36,7 @@ export interface Chapter {
 export interface ChapterListItem {
   novel_id: string
   chapter_num: number
+  title: string
   word_count: number
   has_content: boolean
   summary: string

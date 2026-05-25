@@ -204,6 +204,7 @@ export default function ChapterList() {
               <thead>
                 <tr className="border-b border-rim">
                   <th className="px-4 py-3 text-left text-xs text-slate-500 font-medium w-16">章节</th>
+                  <th className="px-4 py-3 text-left text-xs text-slate-500 font-medium w-36">标题</th>
                   <th className="px-4 py-3 text-left text-xs text-slate-500 font-medium w-20">状态</th>
                   <th className="px-4 py-3 text-left text-xs text-slate-500 font-medium w-20">字数</th>
                   <th className="px-4 py-3 text-left text-xs text-slate-500 font-medium">摘要</th>
@@ -214,6 +215,9 @@ export default function ChapterList() {
                 {chapters.map(ch => (
                   <tr key={ch.chapter_num} className="border-b border-rim last:border-0 hover:bg-surface-hover transition-colors">
                     <td className="px-4 py-3 font-mono text-sm text-slate-300">{ch.chapter_num}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300 max-w-[9rem] truncate" title={ch.title}>
+                      {ch.title || <span className="text-slate-600 italic">待生成</span>}
+                    </td>
                     <td className="px-4 py-3">
                       {ch.has_content ? (
                         <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">已写</span>

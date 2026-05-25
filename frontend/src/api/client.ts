@@ -144,10 +144,10 @@ export const api = {
   chapters: {
     list: (novelId: string) => req<ChapterListItem[]>(`/novels/${novelId}/chapters`),
     get: (novelId: string, num: number) => req<Chapter>(`/novels/${novelId}/chapters/${num}`),
-    update: (novelId: string, num: number, content: string) =>
+    update: (novelId: string, num: number, content: string, title?: string) =>
       req<Chapter>(`/novels/${novelId}/chapters/${num}`, {
         method: 'PUT',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, ...(title !== undefined && { title }) }),
       }),
     generateStream: async (
       novelId: string,

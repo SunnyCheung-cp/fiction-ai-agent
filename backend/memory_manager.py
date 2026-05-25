@@ -1,4 +1,5 @@
 # backend/memory_manager.py
+import asyncio
 from backend.database import Database
 from backend.vector_store import VectorStore
 from backend.novel_engine import NovelEngine
@@ -50,7 +51,11 @@ class MemoryManager:
     async def after_chapter_written(self, chapter_num: int, content: str, db: Database):
         characters = db.get_characters(self.novel_id)
 
-        summary = await self.engine.summarize(content)
+        title, summary = await asyncio.gather(
+            self.engine.generate_title(content, chapter_num),
+            self.engine.summarize(content),
+        )
+        db.save_chapter_title(self.novel_id, chapter_num, title)
         db.save_chapter_summary(self.novel_id, chapter_num, summary)
 
         key_events = await self.engine.extract_key_events(content)

@@ -15,6 +15,7 @@ export default function ChapterDetail() {
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [editing, setEditing] = useState(false)
   const [editContent, setEditContent] = useState('')
+  const [editTitle, setEditTitle] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [status, setStatus] = useState('')
@@ -34,6 +35,7 @@ export default function ChapterDetail() {
     api.chapters.get(novelId, chapterNum).then(ch => {
       setChapter(ch)
       setEditContent(ch.content)
+      setEditTitle(ch.title ?? '')
     }).catch(console.error)
   }, [novelId, chapterNum])
 
@@ -73,6 +75,7 @@ export default function ChapterDetail() {
           api.chapters.get(novelId!, chapterNum).then(ch => {
             setChapter(ch)
             setEditContent(ch.content)
+            setEditTitle(ch.title ?? '')
           }).catch(console.error)
         },
         err => {
@@ -90,7 +93,7 @@ export default function ChapterDetail() {
     if (!novelId || isSaving) return
     setIsSaving(true)
     try {
-      const updated = await api.chapters.update(novelId, chapterNum, editContent)
+      const updated = await api.chapters.update(novelId, chapterNum, editContent, editTitle)
       setChapter(updated)
       setEditing(false)
       setStatus('已保存')
@@ -139,7 +142,7 @@ export default function ChapterDetail() {
           </button>
           <button
             className="border border-rim text-slate-400 px-3 py-1.5 rounded-lg text-sm hover:bg-surface-hover transition-colors"
-            onClick={() => { setEditing(false); setEditContent(chapter?.content ?? '') }}
+            onClick={() => { setEditing(false); setEditContent(chapter?.content ?? ''); setEditTitle(chapter?.title ?? '') }}
           >
             取消
           </button>
@@ -152,6 +155,24 @@ export default function ChapterDetail() {
       >
         {isGenerating ? '生成中…' : '重新生成'}
       </button>
+    </div>
+  )
+
+  const titleArea = editing ? (
+    <input
+      type="text"
+      maxLength={30}
+      value={editTitle}
+      onChange={e => setEditTitle(e.target.value)}
+      placeholder="章节标题（30字以内）"
+      className="w-full bg-base border border-rim rounded-lg px-4 py-2 text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 transition-colors text-base font-medium"
+    />
+  ) : (
+    <div className="flex items-baseline gap-3">
+      <h2 className="text-lg font-semibold text-slate-100">
+        {chapter?.title || <span className="text-slate-600 font-normal text-sm italic">暂无标题（生成后自动填充）</span>}
+      </h2>
+      {chapter?.title && <span className="text-xs text-slate-600">{chapter.title.length}/30</span>}
     </div>
   )
 
@@ -212,6 +233,7 @@ export default function ChapterDetail() {
         </header>
         <main className="pt-16 pb-16 px-6">
           <div className="max-w-2xl mx-auto space-y-4">
+            {titleArea}
             {meta}
             {contentArea}
             {prevNext}
@@ -228,6 +250,7 @@ export default function ChapterDetail() {
           <h1 className="text-xl font-bold text-slate-100">第 {chapterNum} 章</h1>
           {toolbar}
         </div>
+        {titleArea}
         {meta}
         {contentArea}
         {prevNext}

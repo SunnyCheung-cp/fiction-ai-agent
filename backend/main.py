@@ -261,6 +261,7 @@ def list_chapters(novel_id: str, db: DB):
     rows = db.list_chapters_with_status(novel_id)
     return [
         {"novel_id": novel_id, "chapter_num": r["chapter_num"],
+         "title": r.get("title", ""),
          "word_count": r["word_count"], "has_content": r["has_content"],
          "summary": r.get("summary", "")}
         for r in rows
@@ -280,6 +281,8 @@ def update_chapter(novel_id: str, chapter_num: int, body: ChapterUpdate, db: DB)
     if not db.get_novel(novel_id):
         raise HTTPException(status_code=404, detail="Novel not found")
     db.save_chapter_content(novel_id, chapter_num, body.content)
+    if body.title is not None:
+        db.save_chapter_title(novel_id, chapter_num, body.title)
     return db.get_chapter(novel_id, chapter_num)
 
 @app.post("/api/novels/{novel_id}/chapters/{chapter_num}/generate")

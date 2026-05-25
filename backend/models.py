@@ -52,15 +52,18 @@ class OutlineResponse(BaseModel):
 class ChapterResponse(BaseModel):
     novel_id: str
     chapter_num: int
+    title: str = ""
     content: str
     summary: str
 
 class ChapterUpdate(BaseModel):
     content: str
+    title: Optional[str] = None
 
 class ChapterListItem(BaseModel):
     novel_id: str
     chapter_num: int
+    title: str = ""
     word_count: int
     has_content: bool
     summary: str
